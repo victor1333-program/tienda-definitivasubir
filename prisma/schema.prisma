@@ -220,6 +220,7 @@ model ProductVariant {
   inventory  InventoryMovement[]
   demandForecasts DemandForecast[]
   stockAlerts     StockAlert[]
+  stockReservations StockReservation[]
 
   @@map("product_variants")
 }
@@ -417,6 +418,7 @@ model Order {
   updatedAt DateTime @updatedAt
 
   orderItems OrderItem[]
+  invoices   Invoice[]
 
   @@map("orders")
 }
@@ -446,6 +448,56 @@ model OrderItem {
   design   Design? @relation(fields: [designId], references: [id])
 
   @@map("order_items")
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  status        InvoiceStatus @default(PENDING)
+  
+  // Cantidades
+  subtotal      Float
+  taxRate       Float         @default(0.21) // IVA 21% por defecto en España
+  taxAmount     Float
+  totalAmount   Float
+  
+  // Fechas
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime
+  paidDate      DateTime?
+  
+  // Información del cliente (copia del pedido para histórico)
+  customerName    String
+  customerEmail   String
+  customerPhone   String?
+  customerTaxId   String?     // NIF/CIF
+  billingAddress  Json        // Dirección de facturación
+  
+  // Información de la empresa (configuración actual en el momento de la factura)
+  companyName     String
+  companyAddress  Json
+  companyTaxId    String
+  companyPhone    String?
+  companyEmail    String?
+  
+  // Detalles de líneas de factura
+  lineItems       Json        // Array de items con descripción, cantidad, precio unitario, total
+  
+  // Notas y términos
+  notes           String?
+  paymentTerms    String?     // Ej: "Pago a 30 días"
+  
+  // Archivos generados
+  pdfUrl          String?     // URL del PDF de la factura
+  
+  // Relación con pedido
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("invoices")
 }
 
 // ================================
@@ -516,6 +568,28 @@ model Discount {
 }
 
 // ================================
+// CONTACTO Y SOPORTE
+// ================================
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  orderType String?
+  status    ContactStatus @default(PENDING)
+  adminNotes String?
+  resolvedAt DateTime?
+  resolvedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contact_submissions")
+}
+
+// ================================
 // ENUMS
 // ================================
 
@@ -550,6 +624,15 @@ enum PaymentStatus {
   FAILED
   REFUNDED
   PARTIALLY_REFUNDED
+}
+
+enum InvoiceStatus {
+  PENDING     // Factura creada pero no enviada
+  SENT        // Factura enviada al cliente
+  PAID        // Factura pagada
+  OVERDUE     // Factura vencida
+  CANCELLED   // Factura cancelada
+  DRAFT       // Borrador
 }
 
 enum ProductionStatus {
@@ -592,6 +675,13 @@ enum MaterialUnit {
   UNITS       // Unidades
   ROLLS       // Rollos
   SHEETS      // Hojas
+}
+
+enum ContactStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
 }
 
 enum MaterialCategory {
@@ -894,4 +984,28 @@ enum PageType {
   BLOG        // Blog
   GALLERY     // Galería
   SERVICES    // Servicios
+}
+
+// ================================
+// RESERVAS TEMPORALES DE STOCK
+// ================================
+
+model StockReservation {
+  id          String   @id @default(cuid())
+  sessionId   String   // ID de sesión del usuario
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity    Int
+  expiresAt   DateTime // Fecha de expiración de la reserva
+  createdAt   DateTime @default(now())
+  
+  // Información adicional para tracking
+  userId      String?  // Si el usuario está autenticado
+  userAgent   String?  // Para identificar el navegador/dispositivo
+  ipAddress   String?  // IP del usuario (opcional para analytics)
+
+  @@map("stock_reservations")
+  @@index([sessionId])
+  @@index([variantId])
+  @@index([expiresAt])
 }
