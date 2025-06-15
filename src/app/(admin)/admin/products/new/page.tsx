@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
+import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
 import fetcher from "@/lib/fetcher"
 import { toast } from "react-hot-toast"
@@ -46,7 +46,12 @@ export default function NewProductPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
 
-  const { data: categoriesData } = useSWR("/api/categories", fetcher)
+  const { data: categoriesData } = useSWR("/api/categories", fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    refreshInterval: 0,
+    dedupingInterval: 2000
+  })
   const categories = categoriesData?.categories || []
 
   const handleInputChange = (field: string, value: any) => {
@@ -175,7 +180,7 @@ export default function NewProductPage() {
       if (response.ok) {
         const product = await response.json()
         toast.success("Producto base creado exitosamente")
-        // Redirigir a la lista de productos por ahora (hasta que se cree la página de configuración)
+        // Redirigir a la lista de productos por ahora
         router.push("/admin/products")
       } else {
         const error = await response.json()
@@ -194,12 +199,13 @@ export default function NewProductPage() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" asChild>
-            <Link href="/admin/products">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver
-            </Link>
-          </Button>
+          <button
+            onClick={() => router.push("/admin/products")}
+            className="inline-flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 border rounded-lg hover:bg-gray-50"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver
+          </button>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">📦 Nuevo Producto Base</h1>
             <p className="text-gray-600 mt-1">Crea el producto base y luego configura características específicas</p>
@@ -213,14 +219,12 @@ export default function NewProductPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Información básica */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Información Básica
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Información Básica
+          </h3>
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nombre del Producto *
@@ -252,18 +256,16 @@ export default function NewProductPage() {
                 rows={3}
               />
             </div>
-          </CardContent>
+          </div>
         </Card>
 
         {/* Multimedia */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileImage className="h-5 w-5" />
-              Archivos Multimedia
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <FileImage className="h-5 w-5" />
+            Archivos Multimedia
+          </h3>
+          <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Imágenes */}
               <div>
@@ -279,25 +281,24 @@ export default function NewProductPage() {
                     onChange={(e) => e.target.files && handleFileUpload(Array.from(e.target.files), 'image')}
                     className="hidden"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
                     onClick={() => imageInputRef.current?.click()}
                     disabled={uploading}
-                    className="w-full"
+                    className="w-full px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50"
                   >
                     {uploading ? (
                       <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin inline" />
                         Subiendo...
                       </>
                     ) : (
                       <>
-                        <FileImage className="w-4 h-4 mr-2" />
+                        <FileImage className="w-4 h-4 mr-2 inline" />
                         Subir Imágenes
                       </>
                     )}
-                  </Button>
+                  </button>
                 </div>
               </div>
 
@@ -315,25 +316,24 @@ export default function NewProductPage() {
                     onChange={(e) => e.target.files && handleFileUpload(Array.from(e.target.files), 'video')}
                     className="hidden"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
                     onClick={() => videoInputRef.current?.click()}
                     disabled={uploading}
-                    className="w-full"
+                    className="w-full px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50"
                   >
                     {uploading ? (
                       <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin inline" />
                         Subiendo...
                       </>
                     ) : (
                       <>
-                        <Video className="w-4 h-4 mr-2" />
+                        <Video className="w-4 h-4 mr-2 inline" />
                         Subir Videos
                       </>
                     )}
-                  </Button>
+                  </button>
                 </div>
               </div>
 
@@ -351,25 +351,24 @@ export default function NewProductPage() {
                     onChange={(e) => e.target.files && handleFileUpload(Array.from(e.target.files), 'document')}
                     className="hidden"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
                     onClick={() => documentInputRef.current?.click()}
                     disabled={uploading}
-                    className="w-full"
+                    className="w-full px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50"
                   >
                     {uploading ? (
                       <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin inline" />
                         Subiendo...
                       </>
                     ) : (
                       <>
-                        <FileText className="w-4 h-4 mr-2" />
+                        <FileText className="w-4 h-4 mr-2 inline" />
                         Subir Documentos
                       </>
                     )}
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>
@@ -390,9 +389,9 @@ export default function NewProductPage() {
                               className="w-full h-20 object-cover rounded-lg"
                             />
                             <div className="absolute top-1 left-1">
-                              <Badge variant="secondary" className="text-xs px-1 py-0">
+                              <span className="bg-gray-200 text-gray-800 text-xs px-1 py-0 rounded">
                                 IMG
-                              </Badge>
+                              </span>
                             </div>
                           </>
                         ) : (
@@ -405,9 +404,9 @@ export default function NewProductPage() {
                               )}
                             </div>
                             <div className="absolute top-1 left-1">
-                              <Badge variant="secondary" className="text-xs px-1 py-0">
+                              <span className="bg-gray-200 text-gray-800 text-xs px-1 py-0 rounded">
                                 {file.type === 'video' ? 'VID' : 'DOC'}
-                              </Badge>
+                              </span>
                             </div>
                           </>
                         )}
@@ -437,58 +436,52 @@ export default function NewProductPage() {
                 </div>
               </div>
             )}
-          </CardContent>
+          </div>
         </Card>
 
         {/* Categorías */}
-        <Card>
-          <CardHeader>
-            <CardTitle>🏷️ Categorías</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Categorías * <span className="text-xs text-gray-500">(Selecciona una o más)</span>
-              </label>
-              <div className="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto">
-                {categories.length > 0 ? (
-                  categories.map((category: any) => (
-                    <label key={category.id} className="flex items-center gap-2 py-1 hover:bg-gray-50 rounded">
-                      <input
-                        type="checkbox"
-                        checked={selectedCategories.includes(category.id)}
-                        onChange={() => handleCategoryToggle(category.id)}
-                        className="rounded"
-                      />
-                      <span className="text-sm">{category.name}</span>
-                    </label>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500 py-2">No se encontraron categorías</p>
-                )}
-              </div>
-              {selectedCategories.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {selectedCategories.map(catId => {
-                    const category = categories.find((c: any) => c.id === catId)
-                    return category ? (
-                      <Badge key={catId} variant="secondary">
-                        {category.name}
-                      </Badge>
-                    ) : null
-                  })}
-                </div>
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">🏷️ Categorías</h3>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Categorías * <span className="text-xs text-gray-500">(Selecciona una o más)</span>
+            </label>
+            <div className="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto">
+              {categories.length > 0 ? (
+                categories.map((category: any) => (
+                  <label key={category.id} className="flex items-center gap-2 py-1 hover:bg-gray-50 rounded">
+                    <input
+                      type="checkbox"
+                      checked={selectedCategories.includes(category.id)}
+                      onChange={() => handleCategoryToggle(category.id)}
+                      className="rounded"
+                    />
+                    <span className="text-sm">{category.name}</span>
+                  </label>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 py-2">No se encontraron categorías</p>
               )}
             </div>
-          </CardContent>
+            {selectedCategories.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {selectedCategories.map(catId => {
+                  const category = categories.find((c: any) => c.id === catId)
+                  return category ? (
+                    <span key={catId} className="bg-gray-200 text-gray-800 text-xs px-2 py-1 rounded">
+                      {category.name}
+                    </span>
+                  ) : null
+                })}
+              </div>
+            )}
+          </div>
         </Card>
 
         {/* Configuración de Precios */}
-        <Card>
-          <CardHeader>
-            <CardTitle>💰 Configuración de Precios</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">💰 Configuración de Precios</h3>
+          <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -555,16 +548,15 @@ export default function NewProductPage() {
                 <label className="block text-sm font-medium text-gray-700">
                   SKU del Producto
                 </label>
-                <Button
+                <button
                   type="button"
-                  size="sm"
-                  variant="outline"
                   onClick={generateSKU}
                   disabled={!formData.name}
+                  className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50 flex items-center gap-1"
                 >
-                  <Wand2 className="w-3 h-3 mr-1" />
+                  <Wand2 className="w-3 h-3" />
                   Generar SKU
-                </Button>
+                </button>
               </div>
               <Input
                 value={formData.sku}
@@ -589,50 +581,54 @@ export default function NewProductPage() {
                 Producto activo (visible en la tienda)
               </label>
             </div>
-          </CardContent>
+          </div>
         </Card>
 
         {/* Próximos pasos */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <Settings className="w-5 h-5 text-blue-600 mt-0.5" />
-              <div>
-                <h4 className="font-medium text-blue-900 mb-1">¿Qué sigue después?</h4>
-                <p className="text-sm text-blue-700 mb-2">
-                  Una vez creado el producto base, podrás configurar:
-                </p>
-                <ul className="text-sm text-blue-600 space-y-1">
-                  <li>• 🎨 Personalización (editor de diseño, áreas personalizables)</li>
-                  <li>• 📏 Variantes (tallas, colores, materiales específicos)</li>
-                  <li>• 🖼️ Imágenes y multimedia</li>
-                  <li>• 🛠️ Procesos de producción (opcional)</li>
-                </ul>
-              </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Settings className="w-5 h-5 text-blue-600 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-blue-900 mb-1">¿Qué sigue después?</h4>
+              <p className="text-sm text-blue-700 mb-2">
+                Una vez creado el producto base, podrás configurar:
+              </p>
+              <ul className="text-sm text-blue-600 space-y-1">
+                <li>• 🎨 Personalización (editor de diseño, áreas personalizables)</li>
+                <li>• 📏 Variantes (tallas, colores, materiales específicos)</li>
+                <li>• 🖼️ Imágenes y multimedia</li>
+                <li>• 🛠️ Procesos de producción (opcional)</li>
+              </ul>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Botones de acción */}
         <div className="flex flex-col sm:flex-row justify-end gap-4">
-          <Button type="button" variant="outline" asChild>
-            <Link href="/admin/products">
-              Cancelar
-            </Link>
-          </Button>
-          <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+          <button
+            type="button"
+            onClick={() => router.push("/admin/products")}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+          >
             {isLoading ? (
               <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                <RefreshCw className="h-4 w-4 animate-spin" />
                 Creando...
               </>
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="h-4 w-4" />
                 Crear Producto Base
               </>
             )}
-          </Button>
+          </button>
         </div>
       </form>
     </div>

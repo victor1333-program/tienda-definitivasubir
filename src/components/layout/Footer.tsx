@@ -25,7 +25,7 @@ export default function Footer() {
                 </div>
               </div>
               <p className="text-gray-300 mb-6 leading-relaxed">
-                🔥 <strong className="text-white">Los mejores en personalización</strong> DTF, sublimación y corte láser.<br/>
+                🔥 <strong className="text-white">Productos personalizados únicos</strong> para tus momentos especiales.<br/>
                 💡 Hacemos realidad tus ideas más creativas.
               </p>
               
@@ -37,10 +37,6 @@ export default function Footer() {
                   ))}
                 </div>
                 <span className="text-sm font-semibold text-yellow-300">5.0 • +500 clientes felices</span>
-              </div>
-              
-              <div className="text-sm text-gray-400">
-                CIF: 77598953N
               </div>
             </div>
             
@@ -88,14 +84,20 @@ export default function Footer() {
           <div>
             <h3 className="font-semibold mb-4">Enlaces Rápidos</h3>
             <div className="space-y-2">
-              <Link href="/categoria/textiles-dtf" className="block text-gray-300 hover:text-primary-500">
-                Textiles DTF
+              <Link href="/categoria/bodas-eventos" className="block text-gray-300 hover:text-primary-500">
+                Bodas & Eventos
               </Link>
-              <Link href="/categoria/sublimacion" className="block text-gray-300 hover:text-primary-500">
-                Sublimación
+              <Link href="/categoria/comuniones-bautizos" className="block text-gray-300 hover:text-primary-500">
+                Comuniones & Bautizos
               </Link>
-              <Link href="/categoria/corte-laser" className="block text-gray-300 hover:text-primary-500">
-                Corte Láser
+              <Link href="/categoria/baby-shower" className="block text-gray-300 hover:text-primary-500">
+                Baby Shower
+              </Link>
+              <Link href="/categoria/textil-personalizado" className="block text-gray-300 hover:text-primary-500">
+                Textil Personalizado
+              </Link>
+              <Link href="/categoria/tazas-accesorios" className="block text-gray-300 hover:text-primary-500">
+                Tazas & Accesorios
               </Link>
               <Link href="/personalizador" className="block text-gray-300 hover:text-primary-500">
                 Personalizar
@@ -106,27 +108,26 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Shipping Info */}
+          {/* About Us */}
           <div>
-            <h3 className="font-semibold mb-4">Envíos</h3>
-            <div className="space-y-2 text-gray-300">
-              <div className="flex justify-between">
-                <span>Recogida en tienda:</span>
-                <span className="text-green-400">Gratis</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Envío estándar:</span>
-                <span>4,50€</span>
-              </div>
-              <div className="text-sm text-gray-400">
-                1-2 días laborables
-              </div>
-              <div className="flex justify-between">
-                <span>Envío express:</span>
-                <span>6,50€</span>
-              </div>
-              <div className="text-sm text-gray-400">
-                24 horas
+            <h3 className="font-semibold mb-4">Sobre Nosotros</h3>
+            <div className="space-y-3 text-gray-300">
+              <p className="text-sm leading-relaxed">
+                Especializados en productos personalizados para eventos especiales y textil personalizado.
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  💍 Bodas y eventos
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  🎉 Comuniones y bautizos
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  👶 Baby shower
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  👕 Textil personalizado
+                </div>
               </div>
             </div>
           </div>

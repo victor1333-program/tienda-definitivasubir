@@ -1,235 +1,128 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { notificationService } from '@/lib/notifications'
+import { withRateLimit, rateLimitConfigs } from '@/lib/rate-limit'
+import { apiSecurityHeaders } from '@/lib/security-headers'
+import { validateQuery } from '@/lib/validation'
+import { z } from 'zod'
 
-export async function GET(request: NextRequest) {
+// Schema para query parameters
+const getNotificationsSchema = z.object({
+  limit: z.string().optional().transform(val => val ? parseInt(val) : 20),
+  offset: z.string().optional().transform(val => val ? parseInt(val) : 0),
+  unreadOnly: z.string().optional().transform(val => val === 'true'),
+  types: z.string().optional().transform(val => val ? val.split(',') : [])
+})
+
+async function getNotificationsHandler(request: NextRequest) {
   try {
+    // Verificar autenticación
     const session = await getServerSession(authOptions)
-    
-    if (!session?.user || session.user.role === 'CUSTOMER') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    if (!session?.user?.id) {
+      return apiSecurityHeaders(NextResponse.json(
+        { message: 'No autenticado' },
+        { status: 401 }
+      ))
     }
 
+    // Validar query parameters
     const { searchParams } = new URL(request.url)
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const offset = parseInt(searchParams.get('offset') || '0')
-    const filter = searchParams.get('filter') // 'unread', 'read', 'all'
-
-    // Por ahora vamos a generar notificaciones dinámicamente
-    // En el futuro estas vendrán de la base de datos
-    const mockNotifications = await generateMockNotifications()
-
-    // Aplicar filtros
-    let filteredNotifications = mockNotifications
-    if (filter === 'unread') {
-      filteredNotifications = mockNotifications.filter(n => !n.isRead)
-    } else if (filter === 'read') {
-      filteredNotifications = mockNotifications.filter(n => n.isRead)
+    const queryParams = Object.fromEntries(searchParams.entries())
+    
+    const validation = validateQuery(getNotificationsSchema)(queryParams)
+    if (!validation.success) {
+      return apiSecurityHeaders(NextResponse.json(
+        { message: validation.errors[0] },
+        { status: 400 }
+      ))
     }
 
-    // Aplicar paginación
-    const paginatedNotifications = filteredNotifications
-      .slice(offset, offset + limit)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const { limit, offset, unreadOnly, types } = validation.data
 
-    const stats = {
-      total: filteredNotifications.length,
-      unread: mockNotifications.filter(n => !n.isRead).length,
-      actionRequired: mockNotifications.filter(n => n.actionRequired && !n.isRead).length
+    // Obtener notificaciones según el rol del usuario
+    let notifications
+    if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') {
+      notifications = await notificationService.getForAdmins({
+        limit,
+        offset,
+        unreadOnly,
+        types: types as any[]
+      })
+    } else {
+      notifications = await notificationService.getForUser(session.user.id, {
+        limit,
+        offset,
+        unreadOnly,
+        types: types as any[]
+      })
     }
 
-    return NextResponse.json({
-      notifications: paginatedNotifications,
-      stats,
+    // Obtener conteo de no leídas
+    const unreadCount = await notificationService.getUnreadCount(session.user.id)
+
+    return apiSecurityHeaders(NextResponse.json({
+      notifications,
+      unreadCount,
       pagination: {
         limit,
         offset,
-        total: filteredNotifications.length,
-        hasMore: offset + limit < filteredNotifications.length
+        hasMore: notifications.length === limit
       }
-    })
+    }))
 
   } catch (error) {
-    console.error('Error fetching notifications:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
+    console.error('Error getting notifications:', error)
+    return apiSecurityHeaders(NextResponse.json(
+      { message: 'Error interno del servidor' },
       { status: 500 }
-    )
+    ))
   }
 }
 
-export async function POST(request: NextRequest) {
+async function createNotificationHandler(request: NextRequest) {
   try {
+    // Verificar autenticación y permisos de admin
     const session = await getServerSession(authOptions)
-    
-    if (!session?.user || session.user.role === 'CUSTOMER') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    if (!session?.user?.id || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
+      return apiSecurityHeaders(NextResponse.json(
+        { message: 'No autorizado' },
+        { status: 403 }
+      ))
     }
 
     const body = await request.json()
+    const { type, title, message, priority, userId, metadata, actionUrl, expiresAt } = body
 
     // Validar datos requeridos
-    if (!body.type || !body.category || !body.title || !body.message) {
-      return NextResponse.json(
-        { error: 'Faltan campos requeridos: type, category, title, message' },
+    if (!type || !title || !message) {
+      return apiSecurityHeaders(NextResponse.json(
+        { message: 'Faltan campos requeridos: type, title, message' },
         { status: 400 }
-      )
+      ))
     }
 
-    // En el futuro, aquí crearíamos la notificación en la base de datos
-    const notification = {
-      id: `notif_${Date.now()}`,
-      type: body.type,
-      category: body.category,
-      title: body.title,
-      message: body.message,
-      isRead: false,
-      actionRequired: body.actionRequired || false,
-      actionUrl: body.actionUrl || null,
-      createdAt: new Date(),
-      expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
-      metadata: body.metadata || null
-    }
+    const notification = await notificationService.create({
+      type,
+      title,
+      message,
+      priority: priority || 'MEDIUM',
+      userId,
+      metadata,
+      actionUrl,
+      expiresAt: expiresAt ? new Date(expiresAt) : undefined
+    })
 
-    return NextResponse.json(notification, { status: 201 })
+    return apiSecurityHeaders(NextResponse.json(notification, { status: 201 }))
 
   } catch (error) {
     console.error('Error creating notification:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
+    return apiSecurityHeaders(NextResponse.json(
+      { message: 'Error interno del servidor' },
       { status: 500 }
-    )
+    ))
   }
 }
 
-// Función para generar notificaciones mock basadas en datos reales
-async function generateMockNotifications() {
-  const notifications = []
-  const now = new Date()
-
-  try {
-    // Verificar pedidos pendientes
-    const pendingOrders = await db.order.count({
-      where: { status: 'PENDING' }
-    })
-
-    if (pendingOrders > 0) {
-      notifications.push({
-        id: 'pending-orders',
-        type: 'warning',
-        category: 'order',
-        title: 'Pedidos pendientes de confirmar',
-        message: `Tienes ${pendingOrders} pedido${pendingOrders > 1 ? 's' : ''} pendiente${pendingOrders > 1 ? 's' : ''} de confirmación`,
-        isRead: false,
-        actionRequired: true,
-        actionUrl: '/admin/orders?status=pending',
-        createdAt: new Date(now.getTime() - 30 * 60 * 1000), // 30 minutos atrás
-        metadata: { count: pendingOrders }
-      })
-    }
-
-    // Verificar stock bajo (simulado)
-    const lowStockCount = Math.floor(Math.random() * 3) // Simulamos 0-2 productos con stock bajo
-    if (lowStockCount > 0) {
-      notifications.push({
-        id: 'low-stock',
-        type: 'warning',
-        category: 'inventory',
-        title: 'Stock bajo detectado',
-        message: `${lowStockCount} producto${lowStockCount > 1 ? 's tienen' : ' tiene'} stock bajo. Revisa el inventario.`,
-        isRead: false,
-        actionRequired: true,
-        actionUrl: '/admin/inventory?filter=low-stock',
-        createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000), // 2 horas atrás
-        metadata: { count: lowStockCount }
-      })
-    }
-
-    // Verificar pagos fallidos (simulado)
-    if (Math.random() > 0.7) {
-      notifications.push({
-        id: 'failed-payment',
-        type: 'error',
-        category: 'payment',
-        title: 'Pago fallido detectado',
-        message: 'Un pago ha fallado y requiere atención. El cliente ha sido notificado.',
-        isRead: false,
-        actionRequired: true,
-        actionUrl: '/admin/orders?payment_status=failed',
-        createdAt: new Date(now.getTime() - 45 * 60 * 1000), // 45 minutos atrás
-        metadata: { orderId: 'order_123' }
-      })
-    }
-
-    // Verificar nuevos clientes registrados
-    const recentCustomers = await db.user.count({
-      where: {
-        role: 'CUSTOMER',
-        createdAt: {
-          gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) // Últimas 24 horas
-        }
-      }
-    })
-
-    if (recentCustomers > 0) {
-      notifications.push({
-        id: 'new-customers',
-        type: 'success',
-        category: 'customer',
-        title: 'Nuevos clientes registrados',
-        message: `${recentCustomers} nuevo${recentCustomers > 1 ? 's' : ''} cliente${recentCustomers > 1 ? 's se han' : ' se ha'} registrado en las últimas 24 horas`,
-        isRead: Math.random() > 0.5, // 50% de posibilidad de estar leída
-        actionRequired: false,
-        actionUrl: '/admin/customers?filter=recent',
-        createdAt: new Date(now.getTime() - 3 * 60 * 60 * 1000), // 3 horas atrás
-        metadata: { count: recentCustomers }
-      })
-    }
-
-    // Verificar descuentos próximos a expirar
-    const expiringDiscounts = await db.discount.count({
-      where: {
-        isActive: true,
-        validUntil: {
-          lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), // Próximos 7 días
-          gte: now
-        }
-      }
-    })
-
-    if (expiringDiscounts > 0) {
-      notifications.push({
-        id: 'expiring-discounts',
-        type: 'info',
-        category: 'system',
-        title: 'Descuentos próximos a expirar',
-        message: `${expiringDiscounts} descuento${expiringDiscounts > 1 ? 's expiran' : ' expira'} en los próximos 7 días`,
-        isRead: Math.random() > 0.3, // 70% de posibilidad de estar leída
-        actionRequired: false,
-        actionUrl: '/admin/discounts?filter=expiring',
-        createdAt: new Date(now.getTime() - 6 * 60 * 60 * 1000), // 6 horas atrás
-        metadata: { count: expiringDiscounts }
-      })
-    }
-
-    // Notificaciones del sistema
-    notifications.push({
-      id: 'system-update',
-      type: 'info',
-      category: 'system',
-      title: 'Sistema actualizado',
-      message: 'El sistema de notificaciones ha sido implementado correctamente. ¡Ya puedes recibir alertas en tiempo real!',
-      isRead: false,
-      actionRequired: false,
-      actionUrl: '/admin/settings/notifications',
-      createdAt: new Date(now.getTime() - 10 * 60 * 1000), // 10 minutos atrás
-      metadata: { version: '1.0.0' }
-    })
-
-  } catch (error) {
-    console.error('Error generating notifications:', error)
-  }
-
-  return notifications
-}
+export const GET = withRateLimit(rateLimitConfigs.api, getNotificationsHandler)
+export const POST = withRateLimit(rateLimitConfigs.api, createNotificationHandler)

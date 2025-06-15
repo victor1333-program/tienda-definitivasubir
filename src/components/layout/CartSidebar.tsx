@@ -4,6 +4,7 @@ import { X, Minus, Plus, Trash2, ShoppingCart } from "lucide-react"
 import { useCartStore } from "@/lib/store"
 import { formatPrice } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
+// import { StockReservationStatus } from "@/components/cart/StockReservationStatus"
 import Link from "next/link"
 
 export default function CartSidebar() {
@@ -85,6 +86,11 @@ export default function CartSidebar() {
                       {formatPrice(item.price)}
                     </p>
                     
+                    {/* Stock reservation status */}
+                    <div className="mt-2">
+                      {/* <StockReservationStatus item={item} compact={true} /> */}
+                    </div>
+
                     {/* Quantity controls */}
                     <div className="flex items-center gap-2 mt-2">
                       <button 

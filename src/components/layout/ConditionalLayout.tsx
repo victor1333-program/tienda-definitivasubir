@@ -1,9 +1,20 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import Header from "./Header"
+import dynamic from "next/dynamic"
+import HeaderOriginal from "./HeaderOriginal"
 import Footer from "./Footer"
-import CartSidebar from "./CartSidebar"
+
+// Test both lazy components
+const CartSidebar = dynamic(() => import("./CartSidebar"), {
+  loading: () => null,
+  ssr: false
+})
+
+const WhatsAppWidget = dynamic(() => import("../WhatsAppWidget"), {
+  loading: () => null,
+  ssr: false
+})
 
 export default function ConditionalLayout({
   children,
@@ -12,9 +23,9 @@ export default function ConditionalLayout({
 }) {
   const pathname = usePathname()
   const isAdminRoute = pathname.startsWith('/admin')
+  const isAuthRoute = pathname.startsWith('/auth')
 
-  if (isAdminRoute) {
-    // Solo el contenido para rutas de admin, sin header ni footer del frontend
+  if (isAdminRoute || isAuthRoute) {
     return (
       <main className="min-h-screen">
         {children}
@@ -22,15 +33,16 @@ export default function ConditionalLayout({
     )
   }
 
-  // Layout normal del frontend con header, footer y carrito
+  // Test with both components added
   return (
     <>
-      <Header />
+      <HeaderOriginal />
       <main className="min-h-screen">
         {children}
       </main>
       <Footer />
       <CartSidebar />
+      <WhatsAppWidget />
     </>
   )
 }

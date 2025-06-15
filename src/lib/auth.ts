@@ -33,6 +33,11 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
+          // Verificar si el usuario tiene email verificado (en lugar de isActive)
+          if (!user.emailVerified) {
+            throw new Error('Email no verificado. Verifica tu email para activar la cuenta.')
+          }
+
           const isPasswordValid = await bcrypt.compare(
             credentials.password,
             user.password
@@ -56,6 +61,25 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      console.log('Redirect callback:', { url, baseUrl })
+      
+      // Permitir URLs relativas directamente
+      if (url.startsWith("/")) {
+        console.log('Redirecting to relative URL:', `${baseUrl}${url}`)
+        return `${baseUrl}${url}`
+      }
+      
+      // Si es una URL completa del mismo dominio, permitir
+      if (url.startsWith(baseUrl)) {
+        console.log('Redirecting to same domain URL:', url)
+        return url
+      }
+      
+      // Por defecto, ir al admin después de login exitoso
+      console.log('Redirecting to default admin page')
+      return `${baseUrl}/admin`
+    },
     async jwt({ token, user }) {
       if (user) {
         return {

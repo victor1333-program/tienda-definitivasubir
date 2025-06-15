@@ -129,6 +129,7 @@ export default function PaymentMethodsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('stripe')
   const [testMode, setTestMode] = useState(false)
+  const [isTestModeLoading, setIsTestModeLoading] = useState(false)
   
   const [settings, setSettings] = useState<PaymentSettings>({
     stripe: {
@@ -195,7 +196,20 @@ export default function PaymentMethodsPage() {
 
   useEffect(() => {
     loadSettings()
+    loadTestMode()
   }, [])
+
+  const loadTestMode = async () => {
+    try {
+      const response = await fetch('/api/settings/test-mode')
+      if (response.ok) {
+        const data = await response.json()
+        setTestMode(data.testMode)
+      }
+    } catch (error) {
+      console.error('Error loading test mode:', error)
+    }
+  }
 
   const loadSettings = async () => {
     try {
@@ -251,6 +265,27 @@ export default function PaymentMethodsPage() {
         }
       }
     }))
+  }
+
+  const toggleTestMode = async () => {
+    setIsTestModeLoading(true)
+    try {
+      const response = await fetch('/api/settings/test-mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testMode: !testMode })
+      })
+
+      if (!response.ok) throw new Error('Error al cambiar modo')
+
+      const data = await response.json()
+      setTestMode(data.testMode)
+      toast.success(data.message)
+    } catch (error) {
+      toast.error('Error al cambiar el modo de pago')
+    } finally {
+      setIsTestModeLoading(false)
+    }
   }
 
   const testConnection = async (method: string) => {
@@ -309,9 +344,14 @@ export default function PaymentMethodsPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setTestMode(!testMode)}>
+          <Button 
+            variant={testMode ? "default" : "outline"} 
+            onClick={toggleTestMode}
+            disabled={isTestModeLoading}
+            className={testMode ? "bg-orange-600 hover:bg-orange-700" : ""}
+          >
             <Eye className="h-4 w-4 mr-2" />
-            {testMode ? 'Modo Producción' : 'Modo Pruebas'}
+            {isTestModeLoading ? 'Cambiando...' : (testMode ? '🧪 Modo Prueba ACTIVO' : 'Activar Modo Prueba')}
           </Button>
           <Button variant="outline" onClick={loadSettings}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -325,15 +365,24 @@ export default function PaymentMethodsPage() {
       </div>
 
       {/* Status Banner */}
-      <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
-        <div className="flex items-center">
-          <Info className="h-5 w-5 text-blue-400 mr-2" />
-          <div>
-            <p className="text-sm text-blue-700">
-              <strong>Métodos Activos:</strong> {Object.values(settings).filter((s: any) => s.enabled).length} configurados. 
-              Recuerda probar las conexiones antes de activar en producción.
-            </p>
+      <div className={`border-l-4 p-4 ${testMode ? 'bg-orange-50 border-orange-400' : 'bg-blue-50 border-blue-400'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Info className={`h-5 w-5 mr-2 ${testMode ? 'text-orange-400' : 'text-blue-400'}`} />
+            <div>
+              <p className={`text-sm ${testMode ? 'text-orange-700' : 'text-blue-700'}`}>
+                <strong>Estado:</strong> {testMode ? '🧪 MODO PRUEBA - Los pagos serán simulados' : '🚀 MODO PRODUCCIÓN - Los pagos serán reales'}
+                <br />
+                <strong>Métodos Activos:</strong> {Object.values(settings).filter((s: any) => s.enabled).length} configurados. 
+                {!testMode && ' Recuerda probar las conexiones antes de activar en producción.'}
+              </p>
+            </div>
           </div>
+          {testMode && (
+            <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+              SIMULACIÓN ACTIVA
+            </Badge>
+          )}
         </div>
       </div>
 

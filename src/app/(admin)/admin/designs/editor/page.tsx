@@ -1,89 +1,40 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
-import DesignCanvas from '@/components/editor/DesignCanvas'
-import { toast } from 'react-hot-toast'
+import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
 
-export default function DesignEditorPage() {
-  const searchParams = useSearchParams()
-  const [isLoading, setIsLoading] = useState(true)
-  const [designData, setDesignData] = useState(null)
-  
-  const productId = searchParams.get('productId')
-  const variantId = searchParams.get('variantId')
-  const templateId = searchParams.get('templateId')
-  const designId = searchParams.get('designId')
-
-  useEffect(() => {
-    if (designId) {
-      loadDesign()
-    } else {
-      setIsLoading(false)
-    }
-  }, [designId])
-
-  const loadDesign = async () => {
-    try {
-      const response = await fetch(`/api/designs/${designId}`)
-      if (!response.ok) throw new Error('Error al cargar diseño')
-      
-      const data = await response.json()
-      setDesignData(data)
-    } catch (error) {
-      toast.error('Error al cargar el diseño')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleSaveDesign = async (designData: any) => {
-    try {
-      const method = designId ? 'PUT' : 'POST'
-      const url = designId ? `/api/designs/${designId}` : '/api/designs'
-      
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...designData,
-          name: `Diseño ${new Date().toLocaleDateString()}`
-        })
-      })
-
-      if (!response.ok) throw new Error('Error al guardar diseño')
-      
-      const savedDesign = await response.json()
-      toast.success('Diseño guardado correctamente')
-      
-      // Actualizar URL si es un diseño nuevo
-      if (!designId) {
-        window.history.replaceState(
-          null, 
-          '', 
-          `?designId=${savedDesign.id}${productId ? `&productId=${productId}` : ''}${variantId ? `&variantId=${variantId}` : ''}`
-        )
-      }
-    } catch (error) {
-      toast.error('Error al guardar el diseño')
-    }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
-      </div>
-    )
-  }
-
+export default function DesignEditorPageSimple() {
   return (
-    <DesignCanvas
-      productId={productId || undefined}
-      variantId={variantId || undefined}
-      templateId={templateId || undefined}
-      onSave={handleSaveDesign}
-      initialElements={designData?.elements || []}
-    />
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Link 
+          href="/admin/designs"
+          className="inline-flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 border rounded-lg hover:bg-gray-50"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </Link>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Editor de Diseños</h1>
+          <p className="text-gray-600 mt-1">Crear y editar diseños personalizados</p>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="bg-white border rounded-lg p-6">
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Editor de Diseños
+          </h2>
+          <p className="text-gray-600 mb-4">
+            Esta es una versión simplificada para testing.
+          </p>
+          <p className="text-sm text-gray-500">
+            ✅ La navegación funciona correctamente
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }

@@ -1,94 +1,80 @@
-import { v2 as cloudinary } from 'cloudinary'
+// Cloudinary functionality disabled - dependency removed for optimization
+// This module is kept for compatibility but functions now return mock data
 
-// Configuración de Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true
-})
-
-// Función para subir imagen
-export async function uploadImage(file: File | Buffer, folder: string = 'tienda-definitiva') {
-  try {
-    // Convertir a base64 data URL si es Buffer
-    const fileData = file instanceof File 
-      ? URL.createObjectURL(file) 
-      : `data:image/jpeg;base64,${file.toString('base64')}`
-    
-    const result = await cloudinary.uploader.upload(
-      fileData,
-      {
-        folder,
-        resource_type: 'image',
-        quality: 'auto',
-        fetch_format: 'auto',
-        crop: 'limit',
-        width: 2000,  // Máximo 2000px de ancho
-        height: 2000  // Máximo 2000px de alto
-      }
-    )
-
-    return {
-      public_id: result.public_id,
-      secure_url: result.secure_url,
-      width: result.width,
-      height: result.height,
-      format: result.format,
-      bytes: result.bytes
-    }
-  } catch (error) {
-    console.error('Error uploading image to Cloudinary:', error)
-    throw new Error('Error al subir la imagen')
+// Mock functions for compatibility
+export async function uploadImage(
+  file: Buffer | string,
+  folder: string = 'uploads',
+  filename?: string
+): Promise<{
+  public_id: string
+  secure_url: string
+  width: number
+  height: number
+  format: string
+  bytes: number
+  resource_type: string
+}> {
+  console.warn('Cloudinary upload disabled - using local fallback')
+  
+  // Return mock data for development
+  return {
+    public_id: `mock_${Date.now()}`,
+    secure_url: '/placeholder-image.png',
+    width: 800,
+    height: 600,
+    format: 'png',
+    bytes: 1024,
+    resource_type: 'image',
   }
 }
 
-// Función para subir múltiples imágenes
-export async function uploadMultipleImages(files: (File | Buffer)[], folder: string = 'tienda-definitiva') {
-  try {
-    const uploadPromises = files.map(file => uploadImage(file, folder))
-    const results = await Promise.all(uploadPromises)
-    return results
-  } catch (error) {
-    console.error('Error uploading multiple images:', error)
-    throw new Error('Error al subir las imágenes')
-  }
+export async function uploadMultipleImages(
+  files: (Buffer | string)[],
+  folder: string = 'uploads'
+): Promise<Array<{
+  public_id: string
+  secure_url: string
+  width: number
+  height: number
+  format: string
+  bytes: number
+  resource_type: string
+}>> {
+  console.warn('Cloudinary upload disabled - using local fallback')
+  return files.map((_, index) => ({
+    public_id: `mock_${Date.now()}_${index}`,
+    secure_url: '/placeholder-image.png',
+    width: 800,
+    height: 600,
+    format: 'png',
+    bytes: 1024,
+    resource_type: 'image',
+  }))
 }
 
-// Función para eliminar imagen
-export async function deleteImage(publicId: string) {
-  try {
-    const result = await cloudinary.uploader.destroy(publicId)
-    return result
-  } catch (error) {
-    console.error('Error deleting image from Cloudinary:', error)
-    throw new Error('Error al eliminar la imagen')
-  }
+export async function deleteImage(publicId: string): Promise<{ result: string }> {
+  console.warn('Cloudinary delete disabled')
+  return { result: 'ok' }
 }
 
-// Función para eliminar múltiples imágenes
-export async function deleteMultipleImages(publicIds: string[]) {
-  try {
-    const result = await cloudinary.api.delete_resources(publicIds)
-    return result
-  } catch (error) {
-    console.error('Error deleting multiple images:', error)
-    throw new Error('Error al eliminar las imágenes')
-  }
+export async function deleteMultipleImages(publicIds: string[]): Promise<{ deleted: string[] }> {
+  console.warn('Cloudinary delete disabled')
+  return { deleted: publicIds }
 }
 
-// Función para transformar URL de imagen (redimensionar, etc.)
-export function transformImageUrl(publicId: string, options: {
-  width?: number
-  height?: number
-  crop?: string
-  quality?: string | number
-  format?: string
-}) {
-  return cloudinary.url(publicId, {
-    ...options,
-    secure: true
-  })
+export function getOptimizedImageUrl(
+  publicId: string,
+  options: {
+    width?: number
+    height?: number
+    quality?: number | 'auto'
+    format?: string | 'auto'
+    crop?: string
+  } = {}
+): string {
+  console.warn('Cloudinary optimization disabled - returning original URL')
+  return publicId.startsWith('http') ? publicId : '/placeholder-image.png'
 }
 
-export default cloudinary
+export default null

@@ -29,6 +29,7 @@ import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useCartStore } from '@/lib/store'
+import { useStockReservation } from '@/hooks/useStockReservation'
 import { formatPrice, SHIPPING_COSTS, COMPANY_INFO } from '@/lib/utils'
 
 interface CustomerInfo {
@@ -59,10 +60,13 @@ type PaymentMethod = 'card' | 'transfer' | 'paypal' | 'cash'
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, getTotalPrice, clearCart } = useCartStore()
+  const { items, getTotalPrice, clearCart, getUnreservedItems } = useCartStore()
+  const { releaseStock, getSessionId } = useStockReservation()
   
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [testMode, setTestMode] = useState(false)
+  const [stockValidationError, setStockValidationError] = useState<string | null>(null)
   
   // Form data
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
@@ -158,6 +162,22 @@ export default function CheckoutPage() {
     }
   ]
 
+  // Load test mode status
+  useEffect(() => {
+    const loadTestMode = async () => {
+      try {
+        const response = await fetch('/api/settings/test-mode')
+        if (response.ok) {
+          const data = await response.json()
+          setTestMode(data.testMode)
+        }
+      } catch (error) {
+        console.error('Error loading test mode:', error)
+      }
+    }
+    loadTestMode()
+  }, [])
+
   // Redirect if cart is empty
   useEffect(() => {
     if (items.length === 0) {
@@ -179,6 +199,40 @@ export default function CheckoutPage() {
 
   const handlePrevious = () => {
     setCurrentStep(currentStep - 1)
+  }
+
+  const validateStockReservations = async (): Promise<boolean> => {
+    setStockValidationError(null)
+    
+    const unreservedItems = getUnreservedItems()
+    if (unreservedItems.length > 0) {
+      const itemNames = unreservedItems.map(item => item.name).join(', ')
+      setStockValidationError(`Los siguientes productos no tienen stock reservado: ${itemNames}`)
+      toast.error('Algunos productos no tienen stock reservado')
+      return false
+    }
+
+    // Validar que todas las reservas siguen siendo válidas
+    for (const item of items) {
+      if (item.variantId) {
+        try {
+          const response = await fetch(`/api/stock/available?variantId=${item.variantId}&sessionId=${getSessionId()}`)
+          const stockInfo = await response.json()
+          
+          if (!response.ok) continue
+          
+          if (stockInfo.availableStock < item.quantity) {
+            setStockValidationError(`Stock insuficiente para ${item.name}`)
+            toast.error(`Stock insuficiente para ${item.name}`)
+            return false
+          }
+        } catch (error) {
+          console.error('Error validating stock:', error)
+        }
+      }
+    }
+
+    return true
   }
 
   const validateCurrentStep = (): boolean => {
@@ -225,9 +279,14 @@ export default function CheckoutPage() {
   const handleSubmitOrder = async () => {
     if (!validateCurrentStep()) return
     
+    // Validar reservas de stock antes de proceder
+    const stockValidation = await validateStockReservations()
+    if (!stockValidation) return
+    
     setLoading(true)
     
     try {
+      // 1. Crear el pedido
       const orderData = {
         customerInfo,
         shippingAddress: shippingMethod === 'pickup' ? null : shippingAddress,
@@ -243,23 +302,62 @@ export default function CheckoutPage() {
         acceptPrivacy
       }
 
-      const response = await fetch('/api/orders', {
+      const orderResponse = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData)
       })
 
-      if (!response.ok) throw new Error('Error al crear el pedido')
+      if (!orderResponse.ok) throw new Error('Error al crear el pedido')
 
-      const order = await response.json()
+      const order = await orderResponse.json()
       
-      // Clear cart
-      clearCart()
+      // 2. Verificar si el modo prueba está activo
+      const testModeResponse = await fetch('/api/settings/test-mode')
+      const testModeData = await testModeResponse.json()
       
-      // Redirect to success page
-      router.push(`/checkout/success?orderId=${order.id}`)
+      if (testModeData.testMode) {
+        // Modo prueba: simular el pago
+        toast.info('🧪 Procesando pago en modo prueba...')
+        
+        await new Promise(resolve => setTimeout(resolve, 2000)) // Simular delay
+        
+        const paymentResponse = await fetch('/api/payments/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: order.id,
+            amount: total,
+            paymentMethod,
+            customerEmail: customerInfo.email
+          })
+        })
+
+        const paymentResult = await paymentResponse.json()
+        
+        if (paymentResult.success) {
+          // Clear cart
+          clearCart()
+          
+          // Redirect to success page with test mode indicator
+          router.push(`/checkout/success?orderId=${order.id}&testMode=true`)
+          
+          toast.success('🧪 ¡Pago simulado procesado correctamente!')
+        } else {
+          toast.error(`❌ Error en simulación: ${paymentResult.error}`)
+          return
+        }
+      } else {
+        // Modo producción: aquí iría la integración real con Redsys/Stripe
+        toast.info('Redirigiendo a la pasarela de pago...')
+        
+        // TODO: Implementar integración real con Redsys cuando esté disponible
+        // Por ahora, simular éxito para testing
+        clearCart()
+        router.push(`/checkout/success?orderId=${order.id}&testMode=false`)
+        toast.success('¡Pedido realizado correctamente!')
+      }
       
-      toast.success('¡Pedido realizado correctamente!')
     } catch (error) {
       console.error('Error:', error)
       toast.error('Error al procesar el pedido. Inténtalo de nuevo.')
@@ -277,14 +375,55 @@ export default function CheckoutPage() {
       <Header />
       
       <div className="container mx-auto px-4 py-8">
+        {/* Test Mode Banner */}
+        {testMode && (
+          <div className="mb-6 p-4 bg-orange-50 border-l-4 border-orange-400 rounded-lg">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                  <span className="text-orange-600 font-bold text-sm">🧪</span>
+                </div>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-orange-800">
+                  Modo Prueba Activo
+                </h3>
+                <div className="mt-1 text-sm text-orange-700">
+                  <p>Esta compra será <strong>simulada</strong>. No se realizará ningún cobro real.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <Link href="/productos" className="inline-flex items-center gap-2 text-gray-600 hover:text-primary-500 mb-4">
             <ArrowLeft className="w-4 h-4" />
             Seguir comprando
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Finalizar Compra</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {testMode ? '🧪 Finalizar Compra (Simulación)' : 'Finalizar Compra'}
+          </h1>
         </div>
+
+        {/* Stock Validation Error */}
+        {stockValidationError && (
+          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-lg">
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-red-400 mr-2" />
+              <div>
+                <h3 className="text-sm font-medium text-red-800">
+                  Error de Stock
+                </h3>
+                <div className="mt-1 text-sm text-red-700">
+                  <p>{stockValidationError}</p>
+                  <p className="mt-2">Por favor, revisa tu carrito y reserva el stock de los productos antes de continuar.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Progress Steps */}
         <div className="mb-8">
@@ -730,10 +869,10 @@ export default function CheckoutPage() {
                 <Button
                   onClick={handleSubmitOrder}
                   disabled={loading || !acceptTerms || !acceptPrivacy}
-                  className="flex items-center gap-2"
+                  className={`flex items-center gap-2 ${testMode ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
                 >
                   {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>}
-                  Confirmar Pedido
+                  {testMode ? '🧪 Simular Pago' : 'Confirmar Pedido'}
                   <CheckCircle className="w-4 h-4" />
                 </Button>
               )}

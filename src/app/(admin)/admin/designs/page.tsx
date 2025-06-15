@@ -174,12 +174,17 @@ export default function DesignsPage() {
           <h1 className="text-3xl font-bold text-gray-900">🎨 Diseños y Plantillas</h1>
           <p className="text-gray-600">Gestiona diseños personalizados y plantillas</p>
         </div>
-        <Link href="/admin/designs/editor">
-          <Button className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Nuevo Diseño
-          </Button>
-        </Link>
+        <button 
+          onClick={(e) => {
+            e.preventDefault()
+            console.log('Navegando a /admin/designs/editor')
+            window.location.href = '/admin/designs/editor'
+          }}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors cursor-pointer z-10 relative"
+        >
+          <Plus className="w-4 h-4" />
+          Nuevo Diseño
+        </button>
       </div>
 
       {/* Stats Cards */}

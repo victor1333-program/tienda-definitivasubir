@@ -17,12 +17,16 @@ import {
   Star,
   Eye,
   ArrowUpDown,
-  Palette
+  Palette,
+  Scale
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useCartStore } from '@/lib/store'
+import { WishlistButton } from '@/components/ui/Wishlist'
+import { ComparisonButton } from '@/components/ui/ProductComparison'
+import { ProductCardSkeleton, ProductListSkeleton } from '@/components/ui/LoadingSkeleton'
 
 interface Product {
   id: string
@@ -64,11 +68,11 @@ export default function ProductsPage() {
 
   const categories = [
     { value: 'all', label: 'Todas las categorías' },
-    { value: 'textiles-dtf', label: 'Textiles DTF' },
-    { value: 'sublimacion', label: 'Sublimación' },
-    { value: 'corte-laser', label: 'Corte Láser' },
-    { value: 'eventos-especiales', label: 'Eventos Especiales' },
-    { value: 'empresas', label: 'Empresas' }
+    { value: 'bodas-eventos', label: 'Bodas & Eventos' },
+    { value: 'comuniones-bautizos', label: 'Comuniones & Bautizos' },
+    { value: 'baby-shower', label: 'Baby Shower' },
+    { value: 'textil-personalizado', label: 'Textil Personalizado' },
+    { value: 'tazas-accesorios', label: 'Tazas & Accesorios' }
   ]
 
   const sortOptions = [
@@ -294,7 +298,7 @@ export default function ProductsPage() {
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                       <div className="flex gap-2">
                         <Link href={`/productos/${product.id}`}>
-                          <Button size="sm" variant="outline" className="bg-white hover:bg-gray-100">
+                          <Button size="sm" variant="outline" className="bg-white/95 hover:bg-white border-gray-300 text-gray-800 hover:text-gray-900 shadow-lg">
                             <Eye className="w-3 h-3 mr-1" />
                             Ver
                           </Button>
@@ -303,13 +307,14 @@ export default function ProductsPage() {
                           size="sm"
                           onClick={() => handleAddToCart(product)}
                           disabled={product.variants[0]?.stock <= 0}
+                          className="bg-primary-600 hover:bg-primary-700 text-white shadow-lg"
                         >
                           <ShoppingCart className="w-3 h-3 mr-1" />
                           Comprar
                         </Button>
                         {product.isCustomizable && (
                           <Link href={`/personalizador?productId=${product.id}`}>
-                            <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
+                            <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg">
                               <Palette className="w-3 h-3 mr-1" />
                               Personalizar
                             </Button>
@@ -331,10 +336,11 @@ export default function ProductsPage() {
                       )}
                     </div>
 
-                    {/* Wishlist */}
-                    <button className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Heart className="w-4 h-4 text-gray-600 hover:text-red-500" />
-                    </button>
+                    {/* Wishlist & Comparison */}
+                    <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <WishlistButton productId={product.id} />
+                      <ComparisonButton productId={product.id} />
+                    </div>
                   </div>
                   
                   <div className="p-4">

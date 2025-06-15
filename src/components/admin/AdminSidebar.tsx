@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
@@ -23,69 +23,85 @@ import {
   FileText,
   Layers,
   Building2,
-  Gift,
-  HelpCircle,
   Factory,
   Calculator,
   Package2,
-  Wrench,
   Target,
   TrendingUp,
   Receipt,
   BookOpen,
-  Bell,
-  Shield,
-  Plug,
-  Percent,
   Mail,
-  MessageCircle,
-  Trophy,
-  CheckCircle,
-  Zap,
-  RotateCcw,
-  Menu
+  Menu,
+  Layout,
+  Brush
 } from "lucide-react"
 
 export default function AdminSidebar() {
   const pathname = usePathname()
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(["productos"])
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([])
   const [showLogoutModal, setShowLogoutModal] = useState(false)
 
+  // Auto-expand menu based on current path
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (pathname.startsWith("/admin/content")) {
+        setExpandedMenus(prev => prev.includes("contenido") ? prev : [...prev, "contenido"])
+      } else if (pathname.startsWith("/admin/products") || pathname.startsWith("/admin/categories") || pathname.startsWith("/admin/inventory") || pathname.startsWith("/admin/suppliers")) {
+        setExpandedMenus(prev => prev.includes("productos") ? prev : [...prev, "productos"])
+      } else if (pathname.startsWith("/admin/production")) {
+        setExpandedMenus(prev => prev.includes("produccion") ? prev : [...prev, "produccion"])
+      } else if (pathname.startsWith("/admin/customers")) {
+        setExpandedMenus(prev => prev.includes("clientes") ? prev : [...prev, "clientes"])
+      } else if (pathname.startsWith("/admin/finances")) {
+        setExpandedMenus(prev => prev.includes("finanzas") ? prev : [...prev, "finanzas"])
+      } else if (pathname.startsWith("/admin/settings") || pathname.startsWith("/admin/email-system")) {
+        setExpandedMenus(prev => prev.includes("configuracion") ? prev : [...prev, "configuracion"])
+      }
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [pathname])
+
   const toggleMenu = (menu: string) => {
-    setExpandedMenus(prev => 
-      prev.includes(menu) 
+    setExpandedMenus(prev => {
+      const newMenus = prev.includes(menu) 
         ? prev.filter(m => m !== menu)
         : [...prev, menu]
-    )
+      return newMenus
+    })
   }
 
   const handleLogout = async () => {
     setShowLogoutModal(false)
-    await signOut({ callbackUrl: "/admin/login" })
+    await signOut({ callbackUrl: "/auth/signin" })
   }
 
   const getLinkClass = (path: string) =>
     `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
       pathname === path
         ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg"
-        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+        : "text-gray-600 hover:bg-orange-50 hover:text-orange-700"
     }`
 
   const getParentLinkClass = (basePath: string) =>
     `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
       pathname.startsWith(basePath)
         ? "bg-orange-50 text-orange-700 border border-orange-200"
-        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+        : "text-gray-600 hover:bg-orange-50 hover:text-orange-700"
     }`
 
   return (
     <>
-      <aside className="w-64 bg-white border-r border-gray-200 h-full flex flex-col shadow-sm">
+      <aside className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col shadow-sm fixed left-0 top-0 z-30">
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 via-orange-600 to-green-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Palette className="h-6 w-6 text-white" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+              <img 
+                src="/img/Social_Logo.png" 
+                alt="Lovilike Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <h2 className="font-bold text-gray-900 text-lg">Lovilike</h2>
@@ -95,7 +111,10 @@ export default function AdminSidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto" style={{
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#d1d5db #f3f4f6'
+        }}>
           <Link href="/admin" className={getLinkClass("/admin")}>
             <Home className="h-5 w-5" />
             Dashboard
@@ -160,10 +179,6 @@ export default function AdminSidebar() {
             
             {expandedMenus.includes("produccion") && (
               <div className="ml-6 mt-2 space-y-1 border-l border-gray-200 pl-4">
-                <Link href="/admin/production" className={getLinkClass("/admin/production")}>
-                  <Factory className="h-4 w-4" />
-                  Sistema IA
-                </Link>
                 <Link href="/admin/production/board" className={getLinkClass("/admin/production/board")}>
                   <Layers className="h-4 w-4" />
                   Tablero
@@ -171,10 +186,6 @@ export default function AdminSidebar() {
                 <Link href="/admin/workshop" className={getLinkClass("/admin/workshop")}>
                   <Settings className="h-4 w-4" />
                   Taller
-                </Link>
-                <Link href="/admin/production-reports" className={getLinkClass("/admin/production-reports")}>
-                  <BarChart3 className="h-4 w-4" />
-                  Reportes
                 </Link>
                 <Link href="/admin/production/material-stock" className={getLinkClass("/admin/production/material-stock")}>
                   <Package2 className="h-4 w-4" />
@@ -184,17 +195,9 @@ export default function AdminSidebar() {
                   <Calculator className="h-4 w-4" />
                   Calc. Costes
                 </Link>
-                <Link href="/admin/task-assignment" className={getLinkClass("/admin/task-assignment")}>
-                  <Users className="h-4 w-4" />
-                  Asignación
-                </Link>
-                <Link href="/admin/quality-control" className={getLinkClass("/admin/quality-control")}>
-                  <CheckCircle className="h-4 w-4" />
-                  Calidad
-                </Link>
-                <Link href="/admin/production-optimization" className={getLinkClass("/admin/production-optimization")}>
-                  <Zap className="h-4 w-4" />
-                  Optimización
+                <Link href="/admin/production/materials" className={getLinkClass("/admin/production/materials")}>
+                  <Package2 className="h-4 w-4" />
+                  Materiales
                 </Link>
               </div>
             )}
@@ -205,8 +208,13 @@ export default function AdminSidebar() {
             Diseños
           </Link>
 
+          <Link href="/admin/email-system" className={getLinkClass("/admin/email-system")}>
+            <Mail className="h-5 w-5" />
+            Sistema Email
+          </Link>
+
           {/* Contenido Menu */}
-          <div>
+          <div className="relative">
             <button
               onClick={() => toggleMenu("contenido")}
               className={`w-full ${getParentLinkClass("/admin/content")} justify-between`}
@@ -215,13 +223,16 @@ export default function AdminSidebar() {
                 <FileText className="h-5 w-5" />
                 Contenido
               </div>
-              <ChevronDown className={`h-4 w-4 transition-transform ${
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${
                 expandedMenus.includes("contenido") ? "rotate-180" : ""
               }`} />
             </button>
-            {expandedMenus.includes("contenido") && (
-              <div className="ml-6 mt-2 space-y-1 border-l border-gray-200 pl-4">
-                <Link href="/admin/gallery" className={getLinkClass("/admin/gallery")}>
+            
+            <div className={`overflow-hidden transition-all duration-300 ${
+              expandedMenus.includes("contenido") ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+            }`}>
+              <div className="ml-6 mt-2 space-y-1 border-l-2 border-orange-200 pl-4 bg-gray-50/50 rounded-r-lg py-2">
+                <Link href="/admin/content/gallery" className={getLinkClass("/admin/content/gallery")}>
                   <FileImage className="h-4 w-4" />
                   Galería
                 </Link>
@@ -230,7 +241,7 @@ export default function AdminSidebar() {
                   Menús
                 </Link>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Clientes Menu */}
@@ -254,14 +265,6 @@ export default function AdminSidebar() {
                   <Users className="h-4 w-4" />
                   Lista Clientes
                 </Link>
-                <Link href="/admin/customer-analytics" className={getLinkClass("/admin/customer-analytics")}>
-                  <TrendingUp className="h-4 w-4" />
-                  Análisis Clientes
-                </Link>
-                <Link href="/admin/loyalty-program" className={getLinkClass("/admin/loyalty-program")}>
-                  <Trophy className="h-4 w-4" />
-                  Fidelización
-                </Link>
               </div>
             )}
           </div>
@@ -283,11 +286,7 @@ export default function AdminSidebar() {
             
             {expandedMenus.includes("finanzas") && (
               <div className="ml-6 mt-2 space-y-1 border-l border-gray-200 pl-4">
-                <Link href="/admin/finances/dashboard" className={getLinkClass("/admin/finances/dashboard")}>
-                  <TrendingUp className="h-4 w-4" />
-                  Resumen
-                </Link>
-                <Link href="/admin/finances/invoices" className={getLinkClass("/admin/finances/invoices")}>
+                <Link href="/admin/invoices" className={getLinkClass("/admin/invoices")}>
                   <Receipt className="h-4 w-4" />
                   Facturas
                 </Link>
@@ -295,41 +294,13 @@ export default function AdminSidebar() {
                   <FileText className="h-4 w-4" />
                   Presupuestos
                 </Link>
-                <Link href="/admin/finances/reports" className={getLinkClass("/admin/finances/reports")}>
-                  <BarChart3 className="h-4 w-4" />
-                  Reportes
-                </Link>
                 <Link href="/admin/finances/expenses" className={getLinkClass("/admin/finances/expenses")}>
                   <BookOpen className="h-4 w-4" />
                   Gastos
                 </Link>
-                <Link href="/admin/finances/logs" className={getLinkClass("/admin/finances/logs")}>
-                  <FileText className="h-4 w-4" />
-                  Historial
-                </Link>
               </div>
             )}
           </div>
-
-          <Link href="/admin/discounts" className={getLinkClass("/admin/discounts")}>
-            <Percent className="h-5 w-5" />
-            Descuentos
-          </Link>
-
-          <Link href="/admin/users" className={getLinkClass("/admin/users")}>
-            <UserCircle className="h-5 w-5" />
-            Usuarios
-          </Link>
-
-          <Link href="/admin/support" className={getLinkClass("/admin/support")}>
-            <HelpCircle className="h-5 w-5" />
-            Soporte
-          </Link>
-
-          <Link href="/admin/communication" className={getLinkClass("/admin/communication")}>
-            <MessageCircle className="h-5 w-5" />
-            Comunicaciones
-          </Link>
 
           {/* Configuración Menu */}
           <div>
@@ -360,41 +331,9 @@ export default function AdminSidebar() {
                   <CreditCard className="h-4 w-4" />
                   Métodos Pago
                 </Link>
-                <Link href="/admin/settings/shipping-methods" className={getLinkClass("/admin/settings/shipping-methods")}>
+                <Link href="/admin/settings/shipping" className={getLinkClass("/admin/settings/shipping")}>
                   <Truck className="h-4 w-4" />
                   Métodos Envío
-                </Link>
-                <Link href="/admin/settings/taxes" className={getLinkClass("/admin/settings/taxes")}>
-                  <Percent className="h-4 w-4" />
-                  Impuestos
-                </Link>
-                <Link href="/admin/settings/integrations" className={getLinkClass("/admin/settings/integrations")}>
-                  <Plug className="h-4 w-4" />
-                  Integraciones
-                </Link>
-                <Link href="/admin/payment-gateways" className={getLinkClass("/admin/payment-gateways")}>
-                  <CreditCard className="h-4 w-4" />
-                  Pasarelas Pago
-                </Link>
-                <Link href="/admin/refunds" className={getLinkClass("/admin/refunds")}>
-                  <RotateCcw className="h-4 w-4" />
-                  Reembolsos
-                </Link>
-                <Link href="/admin/settings/notifications" className={getLinkClass("/admin/settings/notifications")}>
-                  <Bell className="h-4 w-4" />
-                  Notificaciones
-                </Link>
-                <Link href="/admin/email-system" className={getLinkClass("/admin/email-system")}>
-                  <Mail className="h-4 w-4" />
-                  Sistema Email
-                </Link>
-                <Link href="/admin/whatsapp-alerts" className={getLinkClass("/admin/whatsapp-alerts")}>
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp
-                </Link>
-                <Link href="/admin/settings/security" className={getLinkClass("/admin/settings/security")}>
-                  <Shield className="h-4 w-4" />
-                  Seguridad
                 </Link>
               </div>
             )}

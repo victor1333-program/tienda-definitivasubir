@@ -28,6 +28,11 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import TemplateSelector from './TemplateSelector'
+import ImageLibrary from './ImageLibrary'
+import ShapesLibrary from './ShapesLibrary'
+import ExportModal from './ExportModal'
+import EffectsPanel from './EffectsPanel'
+import AlignmentTools from './AlignmentTools'
 
 interface CanvasElement {
   id: string
@@ -50,12 +55,22 @@ interface CanvasElement {
   
   // Image properties
   src?: string
+  imageData?: string
   
   // Shape properties
-  shapeType?: 'rectangle' | 'circle' | 'triangle'
+  shapeType?: 'rectangle' | 'circle' | 'triangle' | 'square' | 'ellipse' | 'triangle-right' | 'pentagon' | 'hexagon' | 'arrow-right' | 'arrow-left' | 'arrow-up' | 'arrow-down' | 'star' | 'heart' | 'diamond' | 'line-horizontal' | 'line-vertical' | 'line-diagonal'
   fillColor?: string
   strokeColor?: string
   strokeWidth?: number
+  
+  // Effects
+  opacity?: number
+  shadow?: {
+    color: string
+    blur: number
+    offsetX: number
+    offsetY: number
+  }
 }
 
 interface DesignCanvasProps {
@@ -78,6 +93,7 @@ export default function DesignCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [elements, setElements] = useState<CanvasElement[]>(initialElements)
   const [selectedElement, setSelectedElement] = useState<string | null>(null)
+  const [selectedElements, setSelectedElements] = useState<string[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [tool, setTool] = useState<'select' | 'text' | 'image' | 'shape'>('select')
@@ -86,6 +102,10 @@ export default function DesignCanvas({
   const [history, setHistory] = useState<CanvasElement[][]>([initialElements])
   const [historyIndex, setHistoryIndex] = useState(0)
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
+  const [showImageLibrary, setShowImageLibrary] = useState(false)
+  const [showShapesLibrary, setShowShapesLibrary] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map())
 
   // Canvas settings
   const [canvasBackground, setCanvasBackground] = useState('#ffffff')
@@ -175,6 +195,14 @@ export default function DesignCanvas({
         ctx.translate(element.x * zoom, element.y * zoom)
         ctx.rotate((element.rotation * Math.PI) / 180)
         
+        // Apply shadow if exists
+        if (element.shadow) {
+          ctx.shadowColor = element.shadow.color || '#000000'
+          ctx.shadowBlur = (element.shadow.blur || 0) * zoom
+          ctx.shadowOffsetX = (element.shadow.offsetX || 0) * zoom
+          ctx.shadowOffsetY = (element.shadow.offsetY || 0) * zoom
+        }
+        
         switch (element.type) {
           case 'text':
             drawTextElement(ctx, element)
@@ -187,14 +215,20 @@ export default function DesignCanvas({
             break
         }
         
+        // Reset shadow
+        ctx.shadowColor = 'transparent'
+        ctx.shadowBlur = 0
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 0
+        
         ctx.restore()
 
         // Draw selection outline
-        if (selectedElement === element.id && !readOnly) {
+        if ((selectedElement === element.id || selectedElements.includes(element.id)) && !readOnly) {
           drawSelectionOutline(ctx, element)
         }
       })
-  }, [elements, selectedElement, zoom, canvasBackground, showGrid, readOnly])
+  }, [elements, selectedElement, selectedElements, zoom, canvasBackground, showGrid, readOnly])
 
   const drawTextElement = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
     if (!element.text) return
@@ -212,17 +246,22 @@ export default function DesignCanvas({
   }
 
   const drawImageElement = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
-    // Placeholder for image drawing
-    ctx.fillStyle = '#f3f4f6'
-    ctx.fillRect(0, 0, element.width * zoom, element.height * zoom)
-    ctx.strokeStyle = '#9ca3af'
-    ctx.strokeRect(0, 0, element.width * zoom, element.height * zoom)
-    
-    // Draw placeholder icon
-    ctx.fillStyle = '#6b7280'
-    ctx.font = `${20 * zoom}px Arial`
-    ctx.textAlign = 'center'
-    ctx.fillText('🖼️', (element.width * zoom) / 2, (element.height * zoom) / 2)
+    if (element.imageData && loadedImages.has(element.id)) {
+      const img = loadedImages.get(element.id)!
+      ctx.drawImage(img, 0, 0, element.width * zoom, element.height * zoom)
+    } else {
+      // Placeholder for image drawing
+      ctx.fillStyle = '#f3f4f6'
+      ctx.fillRect(0, 0, element.width * zoom, element.height * zoom)
+      ctx.strokeStyle = '#9ca3af'
+      ctx.strokeRect(0, 0, element.width * zoom, element.height * zoom)
+      
+      // Draw placeholder icon
+      ctx.fillStyle = '#6b7280'
+      ctx.font = `${20 * zoom}px Arial`
+      ctx.textAlign = 'center'
+      ctx.fillText('🖼️', (element.width * zoom) / 2, (element.height * zoom) / 2)
+    }
   }
 
   const drawShapeElement = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
@@ -232,20 +271,179 @@ export default function DesignCanvas({
     ctx.fillStyle = element.fillColor || '#3b82f6'
     ctx.strokeStyle = element.strokeColor || '#1e40af'
     ctx.lineWidth = (element.strokeWidth || 2) * zoom
+    
+    // Aplicar opacidad si está definida
+    if (element.opacity !== undefined) {
+      ctx.globalAlpha = element.opacity
+    }
 
     switch (element.shapeType) {
       case 'rectangle':
+      case 'square':
         ctx.fillRect(0, 0, width, height)
-        ctx.strokeRect(0, 0, width, height)
+        if (element.strokeWidth && element.strokeWidth > 0) {
+          ctx.strokeRect(0, 0, width, height)
+        }
         break
       case 'circle':
-        const radius = Math.min(width, height) / 2
+      case 'ellipse':
         ctx.beginPath()
-        ctx.arc(radius, radius, radius, 0, 2 * Math.PI)
+        ctx.ellipse(width/2, height/2, width/2, height/2, 0, 0, 2 * Math.PI)
         ctx.fill()
+        if (element.strokeWidth && element.strokeWidth > 0) {
+          ctx.stroke()
+        }
+        break
+      case 'triangle':
+        ctx.beginPath()
+        ctx.moveTo(width / 2, 0)
+        ctx.lineTo(0, height)
+        ctx.lineTo(width, height)
+        ctx.closePath()
+        ctx.fill()
+        if (element.strokeWidth && element.strokeWidth > 0) {
+          ctx.stroke()
+        }
+        break
+      case 'triangle-right':
+        ctx.beginPath()
+        ctx.moveTo(0, 0)
+        ctx.lineTo(width, 0)
+        ctx.lineTo(0, height)
+        ctx.closePath()
+        ctx.fill()
+        if (element.strokeWidth && element.strokeWidth > 0) {
+          ctx.stroke()
+        }
+        break
+      case 'star':
+        drawStar(ctx, width/2, height/2, 5, Math.min(width, height)/4, Math.min(width, height)/8)
+        break
+      case 'heart':
+        drawHeart(ctx, width, height)
+        break
+      case 'arrow-right':
+        drawArrow(ctx, width, height, 'right')
+        break
+      case 'arrow-left':
+        drawArrow(ctx, width, height, 'left')
+        break
+      case 'arrow-up':
+        drawArrow(ctx, width, height, 'up')
+        break
+      case 'arrow-down':
+        drawArrow(ctx, width, height, 'down')
+        break
+      case 'line-horizontal':
+        ctx.beginPath()
+        ctx.moveTo(0, height/2)
+        ctx.lineTo(width, height/2)
+        ctx.stroke()
+        break
+      case 'line-vertical':
+        ctx.beginPath()
+        ctx.moveTo(width/2, 0)
+        ctx.lineTo(width/2, height)
+        ctx.stroke()
+        break
+      case 'line-diagonal':
+        ctx.beginPath()
+        ctx.moveTo(0, height)
+        ctx.lineTo(width, 0)
         ctx.stroke()
         break
     }
+    
+    // Restaurar opacidad
+    ctx.globalAlpha = 1
+  }
+  
+  const drawStar = (ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes: number, outerRadius: number, innerRadius: number) => {
+    let rot = Math.PI / 2 * 3
+    let x = cx
+    let y = cy
+    const step = Math.PI / spikes
+
+    ctx.beginPath()
+    ctx.moveTo(cx, cy - outerRadius)
+    
+    for (let i = 0; i < spikes; i++) {
+      x = cx + Math.cos(rot) * outerRadius
+      y = cy + Math.sin(rot) * outerRadius
+      ctx.lineTo(x, y)
+      rot += step
+
+      x = cx + Math.cos(rot) * innerRadius
+      y = cy + Math.sin(rot) * innerRadius
+      ctx.lineTo(x, y)
+      rot += step
+    }
+    
+    ctx.lineTo(cx, cy - outerRadius)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+  }
+  
+  const drawHeart = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    const x = width / 2
+    const y = height / 4
+    
+    ctx.beginPath()
+    ctx.moveTo(x, y + height / 4)
+    ctx.bezierCurveTo(x, y, x - width / 4, y, x - width / 4, y + height / 8)
+    ctx.bezierCurveTo(x - width / 4, y + height / 6, x, y + height / 2.5, x, height * 0.8)
+    ctx.bezierCurveTo(x, y + height / 2.5, x + width / 4, y + height / 6, x + width / 4, y + height / 8)
+    ctx.bezierCurveTo(x + width / 4, y, x, y, x, y + height / 4)
+    ctx.fill()
+    ctx.stroke()
+  }
+  
+  const drawArrow = (ctx: CanvasRenderingContext2D, width: number, height: number, direction: 'right' | 'left' | 'up' | 'down') => {
+    ctx.beginPath()
+    
+    switch (direction) {
+      case 'right':
+        ctx.moveTo(0, height * 0.3)
+        ctx.lineTo(width * 0.7, height * 0.3)
+        ctx.lineTo(width * 0.7, height * 0.1)
+        ctx.lineTo(width, height * 0.5)
+        ctx.lineTo(width * 0.7, height * 0.9)
+        ctx.lineTo(width * 0.7, height * 0.7)
+        ctx.lineTo(0, height * 0.7)
+        break
+      case 'left':
+        ctx.moveTo(width, height * 0.3)
+        ctx.lineTo(width * 0.3, height * 0.3)
+        ctx.lineTo(width * 0.3, height * 0.1)
+        ctx.lineTo(0, height * 0.5)
+        ctx.lineTo(width * 0.3, height * 0.9)
+        ctx.lineTo(width * 0.3, height * 0.7)
+        ctx.lineTo(width, height * 0.7)
+        break
+      case 'up':
+        ctx.moveTo(width * 0.3, height)
+        ctx.lineTo(width * 0.3, height * 0.3)
+        ctx.lineTo(width * 0.1, height * 0.3)
+        ctx.lineTo(width * 0.5, 0)
+        ctx.lineTo(width * 0.9, height * 0.3)
+        ctx.lineTo(width * 0.7, height * 0.3)
+        ctx.lineTo(width * 0.7, height)
+        break
+      case 'down':
+        ctx.moveTo(width * 0.3, 0)
+        ctx.lineTo(width * 0.3, height * 0.7)
+        ctx.lineTo(width * 0.1, height * 0.7)
+        ctx.lineTo(width * 0.5, height)
+        ctx.lineTo(width * 0.9, height * 0.7)
+        ctx.lineTo(width * 0.7, height * 0.7)
+        ctx.lineTo(width * 0.7, 0)
+        break
+    }
+    
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
   }
 
   const drawSelectionOutline = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
@@ -286,7 +484,13 @@ export default function DesignCanvas({
           y <= element.y + element.height
         )
       
-      setSelectedElement(clickedElement?.id || null)
+      const isMultiSelect = e.ctrlKey || e.metaKey
+      if (clickedElement) {
+        handleElementSelection(clickedElement.id, isMultiSelect)
+      } else {
+        setSelectedElement(null)
+        setSelectedElements([])
+      }
     } else {
       // Add new element
       addElement(x, y)
@@ -422,6 +626,134 @@ export default function DesignCanvas({
   const selectedElementData = selectedElement ? 
     elements.find(e => e.id === selectedElement) : null
 
+  // Función para cargar imágenes
+  const loadImage = (imageUrl: string, elementId: string) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      setLoadedImages(prev => new Map(prev.set(elementId, img)))
+      drawCanvas()
+    }
+    img.src = imageUrl
+  }
+
+  // Manejar selección de imagen
+  const handleImageSelect = (image: any) => {
+    const newElement: CanvasElement = {
+      id: Date.now().toString(),
+      type: 'image',
+      x: 50,
+      y: 50,
+      width: Math.min(image.dimensions.width, 200),
+      height: Math.min(image.dimensions.height, 200),
+      rotation: 0,
+      zIndex: elements.length,
+      imageData: image.url
+    }
+
+    const newElements = [...elements, newElement]
+    setElements(newElements)
+    saveToHistory(newElements)
+    setSelectedElement(newElement.id)
+    
+    // Cargar la imagen
+    loadImage(image.url, newElement.id)
+    
+    setShowImageLibrary(false)
+  }
+
+  // Manejar selección de forma
+  const handleShapeSelect = (shape: any) => {
+    const newElement: CanvasElement = {
+      id: Date.now().toString(),
+      type: 'shape',
+      x: 50,
+      y: 50,
+      width: shape.defaultSize.width,
+      height: shape.defaultSize.height,
+      rotation: 0,
+      zIndex: elements.length,
+      shapeType: shape.type,
+      fillColor: shapeSettings.fillColor,
+      strokeColor: shapeSettings.strokeColor,
+      strokeWidth: shapeSettings.strokeWidth
+    }
+
+    const newElements = [...elements, newElement]
+    setElements(newElements)
+    saveToHistory(newElements)
+    setSelectedElement(newElement.id)
+    
+    setShowShapesLibrary(false)
+  }
+
+  // Cargar imágenes existentes al montar el componente
+  useEffect(() => {
+    elements.forEach(element => {
+      if (element.type === 'image' && element.imageData && !loadedImages.has(element.id)) {
+        loadImage(element.imageData, element.id)
+      }
+    })
+  }, [elements])
+
+  // Función para actualizar múltiples elementos
+  const updateMultipleElements = (updates: { [id: string]: any }) => {
+    const newElements = elements.map(element => {
+      if (updates[element.id]) {
+        return { ...element, ...updates[element.id] }
+      }
+      return element
+    })
+    setElements(newElements)
+    saveToHistory(newElements)
+  }
+
+  // Función para mover elementos en capas
+  const moveElementLayer = (elementId: string, direction: 'front' | 'back' | 'forward' | 'backward') => {
+    const newElements = [...elements]
+    const elementIndex = newElements.findIndex(el => el.id === elementId)
+    
+    if (elementIndex === -1) return
+
+    const element = newElements[elementIndex]
+    
+    switch (direction) {
+      case 'front':
+        element.zIndex = Math.max(...elements.map(el => el.zIndex)) + 1
+        break
+      case 'back':
+        element.zIndex = Math.min(...elements.map(el => el.zIndex)) - 1
+        break
+      case 'forward':
+        element.zIndex = element.zIndex + 1
+        break
+      case 'backward':
+        element.zIndex = Math.max(0, element.zIndex - 1)
+        break
+    }
+
+    setElements(newElements)
+    saveToHistory(newElements)
+  }
+
+  // Manejar selección múltiple con Ctrl/Cmd
+  const handleElementSelection = (elementId: string, isMultiSelect: boolean = false) => {
+    if (isMultiSelect) {
+      if (selectedElements.includes(elementId)) {
+        setSelectedElements(prev => prev.filter(id => id !== elementId))
+        if (selectedElement === elementId) {
+          setSelectedElement(selectedElements.find(id => id !== elementId) || null)
+        }
+      } else {
+        setSelectedElements(prev => [...prev, elementId])
+        setSelectedElement(elementId)
+      }
+    } else {
+      setSelectedElement(elementId)
+      setSelectedElements([elementId])
+    }
+  }
+
   return (
     <div className="h-screen flex">
       {/* Toolbar */}
@@ -452,7 +784,7 @@ export default function DesignCanvas({
               <Button
                 variant={tool === 'image' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setTool('image')}
+                onClick={() => setShowImageLibrary(true)}
                 className="flex items-center gap-1"
               >
                 <ImageIcon className="w-4 h-4" />
@@ -461,7 +793,7 @@ export default function DesignCanvas({
               <Button
                 variant={tool === 'shape' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setTool('shape')}
+                onClick={() => setShowShapesLibrary(true)}
                 className="flex items-center gap-1"
               >
                 <Square className="w-4 h-4" />
@@ -666,6 +998,25 @@ export default function DesignCanvas({
               </div>
             </div>
           )}
+
+          {/* Effects Panel */}
+          {selectedElement && !readOnly && (
+            <EffectsPanel
+              selectedElement={selectedElementData}
+              onUpdateElement={updateSelectedElement}
+            />
+          )}
+
+          {/* Alignment Tools */}
+          {(selectedElement || selectedElements.length > 0) && !readOnly && (
+            <AlignmentTools
+              selectedElements={selectedElements}
+              allElements={elements}
+              canvasSize={canvasSize}
+              onUpdateElements={updateMultipleElements}
+              onMoveElement={moveElementLayer}
+            />
+          )}
         </div>
       </div>
 
@@ -698,7 +1049,11 @@ export default function DesignCanvas({
                   <Save className="w-4 h-4 mr-1" />
                   Guardar
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowExportModal(true)}
+                >
                   <Download className="w-4 h-4 mr-1" />
                   Exportar
                 </Button>
@@ -729,6 +1084,33 @@ export default function DesignCanvas({
         isOpen={showTemplateSelector}
         onClose={() => setShowTemplateSelector(false)}
         onSelectTemplate={applyTemplate}
+      />
+
+      {/* Image Library Modal */}
+      <ImageLibrary
+        isOpen={showImageLibrary}
+        onClose={() => setShowImageLibrary(false)}
+        onSelectImage={handleImageSelect}
+        allowUpload={!readOnly}
+      />
+
+      {/* Shapes Library Modal */}
+      <ShapesLibrary
+        isOpen={showShapesLibrary}
+        onClose={() => setShowShapesLibrary(false)}
+        onSelectShape={handleShapeSelect}
+        currentShapeSettings={shapeSettings}
+        onUpdateSettings={setShapeSettings}
+      />
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        canvasRef={canvasRef}
+        elements={elements}
+        canvasSize={canvasSize}
+        canvasBackground={canvasBackground}
       />
     </div>
   )

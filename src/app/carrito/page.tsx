@@ -26,6 +26,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useCartStore } from '@/lib/store'
 import { formatPrice, SHIPPING_COSTS } from '@/lib/utils'
+import { WhatsAppCartButton } from '@/components/WhatsAppButton'
 
 export default function CartPage() {
   const { 
@@ -390,11 +391,17 @@ export default function CartPage() {
 
               {/* Checkout Button */}
               <Link href="/checkout">
-                <Button className="w-full mb-4" size="lg">
+                <Button className="w-full mb-3" size="lg">
                   <ShoppingCart className="w-5 h-5 mr-2" />
                   Proceder al Checkout
                 </Button>
               </Link>
+
+              {/* WhatsApp Alternative */}
+              <WhatsAppCartButton 
+                className="w-full mb-4" 
+                size="lg"
+              />
 
               {/* Security Info */}
               <div className="text-center">

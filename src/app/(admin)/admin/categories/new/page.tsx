@@ -67,7 +67,7 @@ export default function NewCategoryPage() {
     "#F43F5E", "#6B7280", "#374151", "#111827"
   ]
 
-  const predefinedIcons = ["🏷️", "📦", "👕", "🎨", "🖼️", "💎", "🌟", "🎯", "🎪", "🎨"]
+  const predefinedIcons = ["🏷️", "📦", "👕", "🎨", "🖼️", "💎", "🌟", "🎯", "🎪", "🛍️"]
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">

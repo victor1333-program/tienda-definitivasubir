@@ -19,23 +19,43 @@ export async function GET() {
         userId: session.user.id
       },
       include: {
-        items: {
+        orderItems: {
           include: {
             product: {
               select: {
+                id: true,
                 name: true,
+                slug: true,
                 images: true
               }
             },
-            productVariant: {
+            variant: {
               select: {
-                name: true,
+                id: true,
+                sku: true,
+                size: true,
+                colorName: true,
                 price: true
+              }
+            },
+            design: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true
               }
             }
           }
         },
-        shippingAddress: true
+        address: {
+          select: {
+            name: true,
+            street: true,
+            city: true,
+            postalCode: true,
+            country: true
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc'
@@ -43,22 +63,47 @@ export async function GET() {
     })
 
     // Formatear la respuesta
-    const formattedOrders = orders.map(order => ({
-      id: order.id,
-      status: order.status,
-      total: order.total,
-      createdAt: order.createdAt.toISOString(),
-      items: order.items.map(item => ({
-        id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-        productName: item.product.name,
-        variantName: item.productVariant?.name,
-        customization: item.customization,
-        image: item.product.images?.[0] || null
-      })),
-      shippingAddress: order.shippingAddress
-    }))
+    const formattedOrders = orders.map(order => {
+      const images = order.orderItems[0]?.product.images ? JSON.parse(order.orderItems[0].product.images) : []
+      
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        total: order.totalAmount,
+        subtotal: order.totalAmount - order.shippingCost - order.taxAmount,
+        shipping: order.shippingCost,
+        tax: order.taxAmount,
+        createdAt: order.createdAt.toISOString(),
+        updatedAt: order.updatedAt.toISOString(),
+        trackingNumber: order.trackingNumber,
+        items: order.orderItems.map(item => {
+          const productImages = item.product.images ? JSON.parse(item.product.images) : []
+          return {
+            id: item.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.unitPrice,
+            product: {
+              id: item.product.id,
+              name: item.product.name,
+              slug: item.product.slug,
+              image: productImages[0] || null
+            },
+            customization: item.customizationData,
+            variant: item.variant,
+            design: item.design
+          }
+        }),
+        shippingAddress: order.shippingAddress || {
+          name: order.address?.name || order.customerName,
+          address: order.address?.street || '',
+          city: order.address?.city || '',
+          postalCode: order.address?.postalCode || '',
+          phone: order.customerPhone || ''
+        }
+      }
+    })
 
     return NextResponse.json(formattedOrders)
 

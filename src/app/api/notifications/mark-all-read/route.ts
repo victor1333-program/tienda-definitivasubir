@@ -1,37 +1,44 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { notificationService } from '@/lib/notifications'
+import { withRateLimit, rateLimitConfigs } from '@/lib/rate-limit'
+import { apiSecurityHeaders } from '@/lib/security-headers'
 
-export async function PATCH(request: NextRequest) {
+async function markAllAsReadHandler(request: NextRequest) {
   try {
+    // Verificar autenticación
     const session = await getServerSession(authOptions)
-    
-    if (!session?.user || session.user.role === 'CUSTOMER') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    if (!session?.user?.id) {
+      return apiSecurityHeaders(NextResponse.json(
+        { message: 'No autenticado' },
+        { status: 401 }
+      ))
     }
 
-    // En el futuro, aquí actualizaríamos todas las notificaciones no leídas
-    // const updatedCount = await db.notification.updateMany({
-    //   where: { 
-    //     userId: session.user.id,
-    //     isRead: false 
-    //   },
-    //   data: { 
-    //     isRead: true, 
-    //     readAt: new Date() 
-    //   }
-    // })
+    // Marcar todas como leídas
+    const success = await notificationService.markAllAsRead(session.user.id)
 
-    return NextResponse.json({ 
-      message: 'Todas las notificaciones marcadas como leídas',
-      updatedCount: 0 // En el futuro sería updatedCount.count
-    })
+    if (!success) {
+      return apiSecurityHeaders(NextResponse.json(
+        { message: 'Error al marcar las notificaciones como leídas' },
+        { status: 500 }
+      ))
+    }
+
+    return apiSecurityHeaders(NextResponse.json(
+      { message: 'Todas las notificaciones marcadas como leídas' },
+      { status: 200 }
+    ))
 
   } catch (error) {
     console.error('Error marking all notifications as read:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
+    return apiSecurityHeaders(NextResponse.json(
+      { message: 'Error interno del servidor' },
       { status: 500 }
-    )
+    ))
   }
 }
+
+export const POST = withRateLimit(rateLimitConfigs.api, markAllAsReadHandler)
+export const PATCH = withRateLimit(rateLimitConfigs.api, markAllAsReadHandler)

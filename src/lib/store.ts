@@ -16,6 +16,8 @@ export interface CartItem {
   customizationFile?: string
   customDesignId?: string
   isCustomized?: boolean
+  stockReserved?: boolean
+  reservationExpires?: Date
 }
 
 interface CartStore {
@@ -28,6 +30,10 @@ interface CartStore {
   toggleCart: () => void
   getTotalItems: () => number
   getTotalPrice: () => number
+  markItemReserved: (id: string, expiresAt: Date) => void
+  markItemUnreserved: (id: string) => void
+  getUnreservedItems: () => CartItem[]
+  getExpiredReservations: () => CartItem[]
 }
 
 export const useCartStore = create<CartStore>()(
@@ -76,6 +82,39 @@ export const useCartStore = create<CartStore>()(
       
       getTotalPrice: () => {
         return get().items.reduce((total, item) => total + (item.price * item.quantity), 0)
+      },
+
+      markItemReserved: (id, expiresAt) => {
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.id === id 
+              ? { ...item, stockReserved: true, reservationExpires: expiresAt }
+              : item
+          )
+        }))
+      },
+
+      markItemUnreserved: (id) => {
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.id === id 
+              ? { ...item, stockReserved: false, reservationExpires: undefined }
+              : item
+          )
+        }))
+      },
+
+      getUnreservedItems: () => {
+        return get().items.filter(item => !item.stockReserved)
+      },
+
+      getExpiredReservations: () => {
+        const now = new Date()
+        return get().items.filter(item => 
+          item.stockReserved && 
+          item.reservationExpires && 
+          new Date(item.reservationExpires) < now
+        )
       },
     }),
     {

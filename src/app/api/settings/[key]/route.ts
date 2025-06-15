@@ -20,8 +20,10 @@ export async function GET(request: NextRequest, { params }: Params) {
       )
     }
 
+    const { key } = await params
+
     const setting = await prisma.setting.findUnique({
-      where: { key: params.key }
+      where: { key }
     })
 
     if (!setting) {
@@ -53,6 +55,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       )
     }
 
+    const { key } = await params
     const body = await request.json()
     const { value } = body
 
@@ -65,9 +68,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     // Actualizar o crear configuración
     const setting = await prisma.setting.upsert({
-      where: { key: params.key },
+      where: { key },
       update: { value },
-      create: { key: params.key, value }
+      create: { key, value }
     })
 
     return NextResponse.json({
@@ -95,8 +98,10 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       )
     }
 
+    const { key } = await params
+
     const existingSetting = await prisma.setting.findUnique({
-      where: { key: params.key }
+      where: { key }
     })
 
     if (!existingSetting) {
@@ -107,7 +112,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     }
 
     await prisma.setting.delete({
-      where: { key: params.key }
+      where: { key }
     })
 
     return NextResponse.json({

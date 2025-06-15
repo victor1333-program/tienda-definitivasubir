@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
@@ -81,6 +82,7 @@ interface Customer {
 }
 
 export default function CustomersPage() {
+  const router = useRouter()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -108,9 +110,11 @@ export default function CustomersPage() {
       const response = await fetch('/api/customers')
       if (response.ok) {
         const data = await response.json()
+        console.log('👥 Customers data received:', data)
         
         // Process customers with CRM analytics
-        const processedCustomers = data.map((customer: any) => ({
+        const customersArray = Array.isArray(data) ? data : (data.customers || [])
+        const processedCustomers = customersArray.map((customer: any) => ({
           ...customer,
           totalSpent: customer.orders?.reduce((sum: number, order: any) => 
             sum + (order.status === 'DELIVERED' ? order.totalAmount : 0), 0) || 0,
@@ -295,7 +299,7 @@ export default function CustomersPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Actualizar
           </Button>
-          <Button>
+          <Button onClick={() => router.push('/admin/customers/new')}>
             <UserPlus className="w-4 h-4 mr-2" />
             Nuevo Cliente
           </Button>

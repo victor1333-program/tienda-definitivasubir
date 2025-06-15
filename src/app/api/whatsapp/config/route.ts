@@ -14,20 +14,35 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    // In a real implementation, this would be stored in database
-    // For demo purposes, return mock configuration
+    // Configuration for Lovilike Personalizados
     const config = {
-      phoneNumber: "+34612345678",
-      businessApiToken: process.env.WHATSAPP_BUSINESS_TOKEN || "",
-      webhookToken: process.env.WHATSAPP_WEBHOOK_TOKEN || "",
-      isConnected: Boolean(process.env.WHATSAPP_BUSINESS_TOKEN),
-      enabledAlerts: {
-        stockAlerts: true,
-        orderUpdates: true,
-        paymentReminders: false,
-        productionAlerts: true,
-        customerService: false,
-        emergencyAlerts: true
+      phone: "+34611066997",
+      businessName: "Lovilike Personalizados",
+      welcomeMessage: "¡Hola! 👋 Bienvenido a Lovilike Personalizados.\n\n¿En qué podemos ayudarte? Somos especialistas en productos personalizados para eventos especiales.",
+      availability: {
+        enabled: true,
+        schedule: "Lunes a Viernes: 9:00 - 18:00",
+        timezone: "Europe/Madrid"
+      },
+      quickReplies: [
+        "¿Cómo personalizar mi producto?",
+        "Información sobre envíos y tiempos",
+        "Consultar estado de mi pedido",
+        "Precios y descuentos disponibles",
+        "Hablar con un diseñador"
+      ],
+      enabled: true,
+      notifications: {
+        newOrders: true,
+        lowStock: true,
+        customerMessages: true,
+        paymentIssues: true
+      },
+      businessProfile: {
+        description: "Especialistas en productos personalizados de alta calidad para bodas, comuniones, bautizos y eventos especiales.",
+        address: "España",
+        website: "https://lovilike.com",
+        email: "info@lovilike.es"
       }
     }
 

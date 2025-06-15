@@ -12,7 +12,8 @@ import {
 import { Settings, User, LogOut } from "lucide-react"
 import { signOut } from "next-auth/react"
 import Link from "next/link"
-import NotificationCenter from "./NotificationCenter"
+import Image from "next/image"
+import NotificationCenter from "./notifications/NotificationCenter"
 
 interface AdminHeaderProps {
   user: {
@@ -27,13 +28,24 @@ export default function AdminHeader({ user }: AdminHeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Panel de Administración
-          </h1>
-          <p className="text-sm text-gray-600">
-            Gestiona todos los aspectos de Lovilike Personalizados
-          </p>
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <Image
+              src="/img/Social_Logo.png"
+              alt="Lovilike"
+              width={48}
+              height={48}
+              className="rounded-full"
+            />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              Panel de Administración
+            </h1>
+            <p className="text-sm text-gray-600">
+              Gestiona todos los aspectos de Lovilike Personalizados
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center space-x-4">

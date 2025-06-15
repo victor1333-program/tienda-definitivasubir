@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import Header from '@/components/layout/Header'
+import HeaderOriginal from '@/components/layout/HeaderOriginal'
 import Footer from '@/components/layout/Footer'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -22,12 +22,17 @@ import {
   MessageSquare,
   ThumbsUp,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Scale
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useCartStore } from '@/lib/store'
+import { WishlistButton } from '@/components/ui/Wishlist'
+import { ComparisonButton } from '@/components/ui/ProductComparison'
+import { Reviews } from '@/components/ui/Reviews'
+import { WhatsAppProductButton } from '@/components/WhatsAppButton'
 
 interface ProductVariant {
   id: string
@@ -95,7 +100,7 @@ export default function ProductDetailPage() {
   const fetchProduct = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/products/${productId}?include=variants,reviews,category`)
+      const response = await fetch(`/api/products/public/${productId}?include=variants,reviews,category`)
       if (!response.ok) throw new Error('Producto no encontrado')
       
       const data = await response.json()
@@ -159,9 +164,9 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen">
-        <Header />
+        <HeaderOriginal />
         <div className="flex items-center justify-center min-h-96">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500"></div>
         </div>
         <Footer />
       </div>
@@ -171,7 +176,7 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <div className="min-h-screen">
-        <Header />
+        <HeaderOriginal />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Producto no encontrado</h1>
@@ -190,16 +195,16 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen">
-      <Header />
+      <HeaderOriginal />
       
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
-          <Link href="/" className="hover:text-primary-500">Inicio</Link>
+          <Link href="/" className="hover:text-orange-500">Inicio</Link>
           <span>/</span>
-          <Link href="/productos" className="hover:text-primary-500">Productos</Link>
+          <Link href="/productos" className="hover:text-orange-500">Productos</Link>
           <span>/</span>
-          <Link href={`/categoria/${product.category.slug}`} className="hover:text-primary-500">
+          <Link href={`/categoria/${product.category.slug}`} className="hover:text-orange-500">
             {product.category.name}
           </Link>
           <span>/</span>
@@ -207,7 +212,7 @@ export default function ProductDetailPage() {
         </nav>
 
         {/* Back Button */}
-        <Link href="/productos" className="inline-flex items-center gap-2 text-gray-600 hover:text-primary-500 mb-6">
+        <Link href="/productos" className="inline-flex items-center gap-2 text-gray-600 hover:text-orange-500 mb-6">
           <ArrowLeft className="w-4 h-4" />
           Volver a productos
         </Link>
@@ -325,7 +330,7 @@ export default function ProductDetailPage() {
 
             {/* Price */}
             <div className="mb-6">
-              <span className="text-3xl font-bold text-primary-600">
+              <span className="text-3xl font-bold text-orange-600">
                 {selectedVariant ? selectedVariant.price.toFixed(2) : product.basePrice.toFixed(2)}€
               </span>
               {product.variants.length > 1 && !selectedVariant && (
@@ -342,9 +347,9 @@ export default function ProductDetailPage() {
                     <button
                       key={variant.id}
                       onClick={() => setSelectedVariant(variant)}
-                      className={`p-3 border rounded-lg text-left hover:border-primary-500 transition-colors ${
+                      className={`p-3 border rounded-lg text-left hover:border-orange-500 transition-colors ${
                         selectedVariant?.id === variant.id 
-                          ? 'border-primary-500 bg-primary-50' 
+                          ? 'border-orange-500 bg-orange-50' 
                           : 'border-gray-200'
                       }`}
                     >
@@ -419,11 +424,16 @@ export default function ProductDetailPage() {
                 </Link>
               )}
 
+              <WhatsAppProductButton
+                productName={product.name}
+                productUrl={typeof window !== 'undefined' ? window.location.href : undefined}
+                className="w-full"
+                size="lg"
+              />
+
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Heart className="w-4 h-4 mr-2" />
-                  Favoritos
-                </Button>
+                <WishlistButton productId={product.id} variant="large" className="flex-1 h-12" />
+                <ComparisonButton productId={product.id} className="flex-1 h-12 w-auto px-4 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl" />
                 <Button variant="outline" size="sm" className="flex-1">
                   <Share2 className="w-4 h-4 mr-2" />
                   Compartir
@@ -461,7 +471,7 @@ export default function ProductDetailPage() {
                   onClick={() => setActiveTab(tab as any)}
                   className={`py-4 px-1 border-b-2 font-medium text-sm ${
                     activeTab === tab
-                      ? 'border-primary-500 text-primary-600'
+                      ? 'border-orange-500 text-orange-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -531,57 +541,7 @@ export default function ProductDetailPage() {
             )}
 
             {activeTab === 'reviews' && (
-              <div>
-                {product.reviews && product.reviews.length > 0 ? (
-                  <div className="space-y-6">
-                    {product.reviews.map((review) => (
-                      <Card key={review.id} className="p-6">
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium">
-                              {review.user.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium">{review.user.name}</span>
-                              <div className="flex">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star 
-                                    key={i} 
-                                    className={`w-4 h-4 ${
-                                      i < review.rating 
-                                        ? 'text-yellow-400 fill-current' 
-                                        : 'text-gray-300'
-                                    }`} 
-                                  />
-                                ))}
-                              </div>
-                              <span className="text-sm text-gray-500">
-                                {new Date(review.createdAt).toLocaleDateString('es-ES')}
-                              </span>
-                            </div>
-                            
-                            <p className="text-gray-600 mb-3">{review.comment}</p>
-                            
-                            <button className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
-                              <ThumbsUp className="w-4 h-4" />
-                              Útil ({review.helpful})
-                            </button>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">Aún no hay valoraciones para este producto.</p>
-                    <p className="text-sm text-gray-400 mt-1">¡Sé el primero en valorarlo!</p>
-                  </div>
-                )}
-              </div>
+              <Reviews productId={product.id} />
             )}
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { 
@@ -13,7 +13,9 @@ import {
   EyeOff,
   Download,
   Upload,
-  MoreHorizontal
+  MoreHorizontal,
+  ExternalLink,
+  Copy
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -52,21 +54,47 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedProducts, setSelectedProducts] = useState<string[]>([])
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+
+  // Debounce search to prevent rapid API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 500)
+    
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Reset to first page when search or category changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, selectedCategory])
 
   // Construir URL de consulta
   const queryParams = new URLSearchParams({
     page: currentPage.toString(),
     limit: "10",
-    ...(search && { search }),
+    ...(debouncedSearch && { search: debouncedSearch }),
     ...(selectedCategory && { category: selectedCategory }),
   })
 
   const { data, error, mutate } = useSWR(
     `/api/products?${queryParams}`,
-    fetcher
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      refreshInterval: 0,
+      dedupingInterval: 2000
+    }
   )
 
-  const { data: categoriesData } = useSWR("/api/categories", fetcher)
+  const { data: categoriesData } = useSWR("/api/categories", fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    refreshInterval: 0,
+    dedupingInterval: 2000
+  })
 
   const products: Product[] = data?.products || []
   const totalPages = data?.pages || 1
@@ -142,6 +170,27 @@ export default function ProductsPage() {
     }
   }
 
+  // Duplicar producto
+  const handleDuplicateProduct = async (productId: string) => {
+    try {
+      const response = await fetch(`/api/products/${productId}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      })
+
+      if (response.ok) {
+        const { duplicatedProduct } = await response.json()
+        mutate()
+        alert(`Producto duplicado exitosamente como: ${duplicatedProduct.name}`)
+      } else {
+        alert("Error al duplicar el producto")
+      }
+    } catch (error) {
+      console.error("Error duplicando producto:", error)
+      alert("Error al duplicar el producto")
+    }
+  }
+
   // Calcular stock total por producto
   const getProductStock = (product: Product) => {
     return product.variants.reduce((total, variant) => total + variant.stock, 0)
@@ -177,12 +226,17 @@ export default function ProductsPage() {
             Gestiona tu catálogo de productos personalizados
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/products/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Producto
-          </Link>
-        </Button>
+        <button 
+          onClick={(e) => {
+            e.preventDefault()
+            console.log('Navegando a /admin/products/new')
+            window.location.href = '/admin/products/new'
+          }}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors cursor-pointer z-10 relative"
+        >
+          <Plus className="h-4 w-4" />
+          Nuevo Producto
+        </button>
       </div>
 
       {/* Filtros y búsqueda */}
@@ -392,28 +446,30 @@ export default function ProductsPage() {
                           </td>
                           <td className="p-3">
                             <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                asChild
-                              >
-                                <Link href={`/admin/products/${product.id}/edit`}>
+                              <Link href={`/admin/products/${product.id}/edit`}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  title="Editar producto"
+                                >
                                   <Edit2 className="h-4 w-4" />
-                                </Link>
+                                </Button>
+                              </Link>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => window.open(`/productos/${product.id}`, '_blank')}
+                                title="Ver en tienda"
+                              >
+                                <ExternalLink className="h-4 w-4" />
                               </Button>
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={() => {
-                                  const action = confirm("¿Qué acción deseas realizar?\n\nOK = Ver en tienda\nCancelar = Duplicar producto")
-                                  if (action) {
-                                    window.open(`/productos/${product.id}`, '_blank')
-                                  } else {
-                                    alert("Funcionalidad de duplicar estará disponible próximamente")
-                                  }
-                                }}
+                                onClick={() => handleDuplicateProduct(product.id)}
+                                title="Duplicar producto"
                               >
-                                <MoreHorizontal className="h-4 w-4" />
+                                <Copy className="h-4 w-4" />
                               </Button>
                             </div>
                           </td>

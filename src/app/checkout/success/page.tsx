@@ -59,6 +59,7 @@ interface Order {
 function CheckoutSuccessContent() {
   const searchParams = useSearchParams()
   const orderId = searchParams.get('orderId')
+  const testMode = searchParams.get('testMode') === 'true'
   
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
@@ -152,16 +153,40 @@ function CheckoutSuccessContent() {
       <Header />
       
       <div className="container mx-auto px-4 py-8">
+        {/* Test Mode Banner */}
+        {testMode && (
+          <div className="mb-6 p-4 bg-orange-50 border-l-4 border-orange-400 rounded-lg">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                  <span className="text-orange-600 font-bold text-sm">🧪</span>
+                </div>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-orange-800">
+                  Modo Prueba Activo
+                </h3>
+                <div className="mt-1 text-sm text-orange-700">
+                  <p>Este pedido fue procesado en <strong>modo simulación</strong>. No se ha realizado ningún cobro real.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Success Header */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-10 h-10 text-green-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            ¡Pedido realizado con éxito!
+            {testMode ? '🧪 ¡Simulación completada!' : '¡Pedido realizado con éxito!'}
           </h1>
           <p className="text-gray-600 text-lg">
-            Gracias por tu compra. Tu pedido #{order.orderNumber} ha sido confirmado.
+            {testMode 
+              ? `Pago simulado procesado. Tu pedido de prueba #${order.orderNumber} ha sido creado.`
+              : `Gracias por tu compra. Tu pedido #${order.orderNumber} ha sido confirmado.`
+            }
           </p>
         </div>
 

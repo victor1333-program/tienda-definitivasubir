@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import Header from '@/components/layout/Header'
+import HeaderOriginal from '@/components/layout/HeaderOriginal'
 import Footer from '@/components/layout/Footer'
 import DesignCanvas from '@/components/editor/DesignCanvas'
 import { Card } from '@/components/ui/Card'
@@ -63,23 +63,35 @@ function PersonalizadorContent() {
   const { addItem } = useCartStore()
 
   const categoryFeatures = {
-    'textiles-dtf': {
+    'bodas-eventos': {
+      icon: <Heart className="w-6 h-6" />,
+      name: 'Bodas & Eventos',
+      description: 'Detalles únicos para celebraciones especiales',
+      techniques: ['Personalización textil', 'Acabados premium', 'Diseños elegantes']
+    },
+    'comuniones-bautizos': {
+      icon: <Sparkles className="w-6 h-6" />,
+      name: 'Comuniones & Bautizos', 
+      description: 'Recuerdos especiales para celebraciones religiosas',
+      techniques: ['Diseños temáticos', 'Colores suaves', 'Acabado delicado']
+    },
+    'baby-shower': {
+      icon: <Heart className="w-6 h-6" />,
+      name: 'Baby Shower',
+      description: 'Productos tiernos para celebrar la llegada del bebé',
+      techniques: ['Diseños infantiles', 'Colores pastel', 'Materiales seguros']
+    },
+    'textil-personalizado': {
       icon: <Shirt className="w-6 h-6" />,
-      name: 'DTF',
-      description: 'Ideal para textiles con colores vibrantes',
-      techniques: ['Impresión DTF', 'Colores ilimitados', 'Tacto suave']
+      name: 'Textil Personalizado',
+      description: 'Camisetas, sudaderas y más con tus diseños',
+      techniques: ['Alta calidad', 'Colores vibrantes', 'Acabado duradero']
     },
-    'sublimacion': {
+    'tazas-accesorios': {
       icon: <Coffee className="w-6 h-6" />,
-      name: 'Sublimación', 
-      description: 'Perfecto para productos sintéticos',
-      techniques: ['Sublimación', 'Colores brillantes', 'Resistente al calor']
-    },
-    'corte-laser': {
-      icon: <Zap className="w-6 h-6" />,
-      name: 'Láser',
-      description: 'Grabado y corte de precisión',
-      techniques: ['Corte láser', 'Grabado', 'Múltiples materiales']
+      name: 'Tazas & Accesorios',
+      description: 'Accesorios personalizados para el día a día',
+      techniques: ['Impresión duradera', 'Apto lavavajillas', 'Colores brillantes']
     }
   }
 
@@ -196,7 +208,7 @@ function PersonalizadorContent() {
   if (loading) {
     return (
       <div className="min-h-screen">
-        <Header />
+        <HeaderOriginal />
         <div className="flex items-center justify-center min-h-96">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
         </div>
@@ -419,9 +431,10 @@ function PersonalizadorContent() {
               </h3>
               <ul className="text-sm text-yellow-800 space-y-2">
                 <li>• Usa imágenes de alta resolución (300 DPI)</li>
-                <li>• Los colores brillantes funcionan mejor</li>
-                <li>• Mantén el texto legible y grande</li>
-                <li>• Revisa la vista previa antes de comprar</li>
+                <li>• Elige colores que combinen con el evento</li>
+                <li>• Mantén el texto legible y elegante</li>
+                <li>• Considera el estilo del evento o celebración</li>
+                <li>• Revisa la vista previa antes de finalizar</li>
               </ul>
             </Card>
 

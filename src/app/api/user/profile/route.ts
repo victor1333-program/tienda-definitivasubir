@@ -32,11 +32,18 @@ export async function GET() {
         name: true,
         email: true,
         phone: true,
-        address: true,
-        city: true,
-        postalCode: true,
-        isActive: true,
-        createdAt: true
+        createdAt: true,
+        addresses: {
+          where: { isDefault: true },
+          select: {
+            name: true,
+            street: true,
+            city: true,
+            postalCode: true,
+            country: true
+          },
+          take: 1
+        }
       }
     })
 
@@ -47,7 +54,20 @@ export async function GET() {
       )
     }
 
-    return NextResponse.json(user)
+    // Mapear la dirección por defecto si existe
+    const defaultAddress = user.addresses[0]
+    const userProfile = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      address: defaultAddress?.street || null,
+      city: defaultAddress?.city || null,
+      postalCode: defaultAddress?.postalCode || null,
+      createdAt: user.createdAt
+    }
+
+    return NextResponse.json(userProfile)
 
   } catch (error) {
     console.error('Error al obtener perfil:', error)
@@ -72,31 +92,97 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const validatedData = updateProfileSchema.parse(body)
 
+    // Actualizar datos básicos del usuario
     const updatedUser = await db.user.update({
       where: {
         id: session.user.id
       },
       data: {
         name: validatedData.name,
-        phone: validatedData.phone || null,
-        address: validatedData.address || null,
-        city: validatedData.city || null,
-        postalCode: validatedData.postalCode || null
+        phone: validatedData.phone || null
       },
       select: {
         id: true,
         name: true,
         email: true,
         phone: true,
-        address: true,
-        city: true,
-        postalCode: true,
-        isActive: true,
         createdAt: true
       }
     })
 
-    return NextResponse.json(updatedUser)
+    // Manejar la dirección si se proporciona
+    if (validatedData.address || validatedData.city || validatedData.postalCode) {
+      // Buscar dirección por defecto existente
+      const existingAddress = await db.address.findFirst({
+        where: {
+          userId: session.user.id,
+          isDefault: true
+        }
+      })
+
+      if (existingAddress) {
+        // Actualizar dirección existente
+        await db.address.update({
+          where: { id: existingAddress.id },
+          data: {
+            name: updatedUser.name || "Dirección principal",
+            street: validatedData.address || "",
+            city: validatedData.city || "",
+            state: validatedData.city || "",
+            postalCode: validatedData.postalCode || ""
+          }
+        })
+      } else {
+        // Crear nueva dirección
+        await db.address.create({
+          data: {
+            userId: session.user.id,
+            name: updatedUser.name || "Dirección principal",
+            street: validatedData.address || "",
+            city: validatedData.city || "",
+            state: validatedData.city || "",
+            postalCode: validatedData.postalCode || "",
+            country: "ES",
+            isDefault: true
+          }
+        })
+      }
+    }
+
+    // Obtener el usuario actualizado con su dirección
+    const userWithAddress = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        createdAt: true,
+        addresses: {
+          where: { isDefault: true },
+          select: {
+            street: true,
+            city: true,
+            postalCode: true
+          },
+          take: 1
+        }
+      }
+    })
+
+    const defaultAddress = userWithAddress?.addresses[0]
+    const userProfile = {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      phone: updatedUser.phone,
+      address: defaultAddress?.street || null,
+      city: defaultAddress?.city || null,
+      postalCode: defaultAddress?.postalCode || null,
+      createdAt: updatedUser.createdAt
+    }
+
+    return NextResponse.json(userProfile)
 
   } catch (error) {
     console.error('Error al actualizar perfil:', error)

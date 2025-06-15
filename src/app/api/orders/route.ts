@@ -10,6 +10,7 @@ import {
   validateStockAvailability 
 } from "@/lib/order-utils"
 import { sendOrderConfirmationEmail } from "@/lib/email"
+import { generateInvoiceForOrder } from "@/app/api/invoices/route"
 
 export async function GET(request: NextRequest) {
   try {
@@ -277,6 +278,16 @@ export async function POST(request: NextRequest) {
       return newOrder
     })
 
+    // Generar factura automáticamente (no bloquear si falla)
+    let invoice = null
+    try {
+      invoice = await generateInvoiceForOrder(order)
+      console.log(`✅ Factura ${invoice.invoiceNumber} generada automáticamente para pedido ${order.orderNumber}`)
+    } catch (invoiceError) {
+      console.error('Error generating automatic invoice:', invoiceError)
+      // No fallar la creación del pedido si la factura falla
+    }
+
     // Enviar email de confirmación (no bloquear si falla)
     try {
       await sendOrderConfirmationEmail(order)
@@ -287,7 +298,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       order,
-      message: 'Pedido creado correctamente'
+      invoice,
+      message: 'Pedido creado correctamente' + (invoice ? ' con factura generada' : '')
     }, { status: 201 })
 
   } catch (error) {

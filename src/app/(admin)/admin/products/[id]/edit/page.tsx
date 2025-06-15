@@ -14,6 +14,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs"
 import { Badge } from "@/components/ui/Badge"
 import fetcher from "@/lib/fetcher"
 import { toast } from "react-hot-toast"
+import AdvancedVariantsManager from "@/components/admin/products/AdvancedVariantsManager"
+import MediaManager from "@/components/admin/products/MediaManager"
+import PersonalizationManager from "@/components/admin/products/PersonalizationManager"
+import ProductionManager from "@/components/admin/products/ProductionManager"
+import GeneralProductEditor from "@/components/admin/products/GeneralProductEditor"
 
 export default function EditProductPage() {
   const router = useRouter()
@@ -100,7 +105,7 @@ export default function EditProductPage() {
 
       {/* Configuration Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Package className="w-4 h-4" />
             General
@@ -117,6 +122,10 @@ export default function EditProductPage() {
             <FileImage className="w-4 h-4" />
             Multimedia
           </TabsTrigger>
+          <TabsTrigger value="production" className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Producción
+          </TabsTrigger>
         </TabsList>
 
         {/* General Tab */}
@@ -125,43 +134,14 @@ export default function EditProductPage() {
             <CardHeader>
               <CardTitle>📦 Información General del Producto</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-medium mb-2">Información Básica</h3>
-                  <div className="space-y-2 text-sm">
-                    <div><strong>Nombre:</strong> {product.name}</div>
-                    <div><strong>SKU:</strong> {product.sku}</div>
-                    <div><strong>Slug:</strong> {product.slug}</div>
-                    <div><strong>Descripción:</strong> {product.description || 'Sin descripción'}</div>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-medium mb-2">Precios</h3>
-                  <div className="space-y-2 text-sm">
-                    <div><strong>Precio Base:</strong> €{product.basePrice}</div>
-                    {product.comparePrice && (
-                      <div><strong>Precio de Comparación:</strong> €{product.comparePrice}</div>
-                    )}
-                    {product.costPrice && (
-                      <div><strong>Precio de Coste:</strong> €{product.costPrice}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-yellow-600 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-yellow-900 mb-1">🚧 En Desarrollo</h4>
-                    <p className="text-sm text-yellow-700">
-                      La edición de información general estará disponible próximamente. 
-                      Usa las otras pestañas para configurar personalización, variantes y multimedia.
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <CardContent>
+              <GeneralProductEditor 
+                product={product}
+                onProductChange={(updatedProduct) => {
+                  console.log('Producto actualizado:', updatedProduct)
+                  // TODO: Actualizar el producto en el estado
+                }}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -173,22 +153,16 @@ export default function EditProductPage() {
               <CardTitle>🎨 Configuración de Personalización</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                <Palette className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-blue-900 mb-2">Editor de Personalización</h3>
-                <p className="text-blue-700 mb-4">
-                  Configura las áreas personalizables del producto, templates y opciones de diseño.
-                </p>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-yellow-700">
-                    🚧 Esta funcionalidad estará disponible en la próxima fase de desarrollo.
-                  </p>
-                </div>
-                <p className="text-sm text-blue-600">
-                  Incluirá: Editor visual, áreas de personalización, templates predefinidos, 
-                  configuración de precios por personalización.
-                </p>
-              </div>
+              <PersonalizationManager
+                productId={productId}
+                personalizationAreas={[]} // TODO: Obtener del producto
+                templates={[]} // TODO: Obtener del producto
+                basePersonalizationPrice={product.customizationPrice || 0}
+                onPersonalizationChange={(data) => {
+                  console.log('Personalization data changed:', data)
+                  // TODO: Guardar cambios
+                }}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -197,25 +171,20 @@ export default function EditProductPage() {
         <TabsContent value="variants">
           <Card>
             <CardHeader>
-              <CardTitle>📏 Gestión de Variantes</CardTitle>
+              <CardTitle>📏 Sistema Avanzado de Variantes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-                <Cog className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-green-900 mb-2">Variantes del Producto</h3>
-                <p className="text-green-700 mb-4">
-                  Gestiona tallas, colores, materiales específicos y precios por variante.
-                </p>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-yellow-700">
-                    🚧 Esta funcionalidad estará disponible en la próxima fase de desarrollo.
-                  </p>
-                </div>
-                <p className="text-sm text-green-600">
-                  Incluirá: Gestión de tallas, selector de colores, control de stock por variante, 
-                  precios diferenciados.
-                </p>
-              </div>
+              <AdvancedVariantsManager
+                productId={productId}
+                initialGroups={[]} // TODO: Obtener grupos del producto
+                initialCombinations={[]} // TODO: Obtener combinaciones del producto
+                basePrice={product.basePrice}
+                onVariantsChange={(groups, combinations) => {
+                  console.log('Variant groups changed:', groups)
+                  console.log('Individual combinations:', combinations)
+                  // TODO: Guardar cambios en la base de datos
+                }}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -227,44 +196,45 @@ export default function EditProductPage() {
               <CardTitle>🖼️ Gestión de Multimedia</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-medium mb-2">Archivos Actuales</h3>
-                  {product.images && JSON.parse(product.images).length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {JSON.parse(product.images).map((url: string, index: number) => (
-                        <div key={index} className="border rounded-lg p-2">
-                          <img 
-                            src={url} 
-                            alt={`Imagen ${index + 1}`}
-                            className="w-full h-24 object-cover rounded"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">Imagen {index + 1}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-sm">No hay imágenes subidas</p>
-                  )}
-                </div>
+              <MediaManager
+                productId={productId}
+                media={(() => {
+                  try {
+                    const images = JSON.parse(product.images || '[]')
+                    return images.map((url: string, index: number) => ({
+                      url,
+                      type: 'image' as const,
+                      name: `Imagen ${index + 1}`,
+                      order: index
+                    }))
+                  } catch {
+                    return []
+                  }
+                })()}
+                onMediaChange={(media) => {
+                  console.log('Media changed:', media)
+                  // TODO: Guardar cambios
+                }}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 text-center">
-                  <FileImage className="w-12 h-12 text-purple-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-purple-900 mb-2">Editor de Multimedia</h3>
-                  <p className="text-purple-700 mb-4">
-                    Gestiona imágenes, videos, documentos y orden de visualización.
-                  </p>
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-yellow-700">
-                      🚧 El editor avanzado estará disponible en la próxima fase de desarrollo.
-                    </p>
-                  </div>
-                  <p className="text-sm text-purple-600">
-                    Incluirá: Reordenamiento drag & drop, edición de imágenes, galerías, 
-                    videos interactivos.
-                  </p>
-                </div>
-              </div>
+        {/* Production Tab */}
+        <TabsContent value="production">
+          <Card>
+            <CardHeader>
+              <CardTitle>🛠️ Procesos de Producción</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProductionManager
+                productId={productId}
+                productionSteps={[]} // TODO: Obtener del producto
+                onStepsChange={(steps) => {
+                  console.log('Production steps changed:', steps)
+                  // TODO: Guardar cambios
+                }}
+              />
             </CardContent>
           </Card>
         </TabsContent>
